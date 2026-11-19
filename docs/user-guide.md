@@ -48,6 +48,13 @@ From top to bottom, the page has:
 2. Right-click the X-axis title, **FL1-A · FITC ▾**. Pick **FL4-A · APC** to see the APC-positive subset, then switch back.
 3. Switch Plot B to **Histogram**, choose **Range**, and drag across the bright FL1 peak to make a range gate.
 
+### 2.4 Quadrant gates
+1. Delete the FL1+ and FL2+ gates (click each, then press Delete), so Plot B is clear.
+2. Choose **Quadrant** and click where the negative and positive populations divide: one vertical and one horizontal line appear.
+3. The plot corners show four populations: **Q1** FITC− PE+ (top left), **Q2** FITC+ PE+, **Q3** FITC+ PE−, **Q4** FITC− PE−. They always add up to 100% of the parent.
+4. Drag the centre square to move both lines, drag one line to move just that line, or drag anywhere inside a quadrant to move the whole cross.
+5. Each quadrant is an ordinary population: pick it under **Show events in** on another plot to look inside it. Deleting any quadrant removes all four; Undo brings them back.
+
 > **Teaching point:** look at the FL1+ population in Plot B. It slopes upwards into FL2. That is spillover: FITC light leaking into the PE detector. Section 3 removes it.
 
 ## 3. Compensation
@@ -103,6 +110,8 @@ Gates and the compensation matrix are not saved when you close the page (yet). U
 | Resize a gate | Drag a handle (selected gate) |
 | Add / remove a polygon corner | Double-click an edge / a corner |
 | Finish a polygon | Double-click, click the first corner, or press Enter |
+| Place a quadrant | Choose Quadrant, then click the dividing point |
+| Move a quadrant | Drag its centre (both lines), one line, or anywhere inside |
 | Cancel drawing or a drag | Esc |
 | Delete the selected gate | Delete or Backspace (after clicking a plot or the table) |
 | Next / previous sample | ‹ › buttons, or arrow keys in the sample list |

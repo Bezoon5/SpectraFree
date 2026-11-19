@@ -2,6 +2,30 @@
 
 All notable changes to SpectraFree are recorded here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/).
 
+## [1.1.0] - 2026-11-19
+
+### Added
+- Quadrant gates: one click creates four linked gates (Q1–Q4) named from the dye or channel; move the centre, either line, or the whole cross; delete and undo as one.
+- Warning when an FCS file holds more than one data set (the first is shown).
+- Plot descriptions for screen readers (channels, population and event count).
+
+### Changed
+- Biexponential axes size their linear zone from the data (spread below zero) instead of from the channel range, so compensated Accuri-range data spreads out instead of collapsing at zero.
+- Plot controls: "Show events in" has its own row, so channel and scale pickers have room for full names.
+
+### Performance
+- Population medians use selection instead of a full sort: the population table is about 7× faster on 1 million events (138 → 20 ms), and a full refresh about 3× faster (184 → 55 ms).
+- Channel statistics use a native numeric sort: opening a 1-million-event, 10-channel file is about a third faster (≈155 → ≈100 ms of processing).
+- Theme colours and fonts are cached instead of being read for every axis label: plot redraws are about 2× faster.
+- Cell-cycle fits are cached per sample until gates, compensation or the set-up change: refreshing with cell cycle on is about 4× faster (37 → 9 ms) and switching samples about 2× faster.
+- The off-screen density canvas and its pixel buffer are reused between redraws.
+
+### Fixed
+- Switching a plot from Histogram back to Dot plot could crash the overlay when a quadrant was on that plot.
+
+### Removed
+- The old name-only control-tube matcher, superseded by Auto-compensate's detection; three duplicated population pickers merged into one helper.
+
 ## [1.0.0] - 2026-11-19
 
 First public release.

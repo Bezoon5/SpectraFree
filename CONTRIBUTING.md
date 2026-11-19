@@ -42,10 +42,10 @@ Everything is in `index.html`, in this order:
 | `FCS parsing` | `parseFCS`, `parseText`, `parseSpill`, `chStats` |
 | `Scales` | `makeScale` (lin / log / asinh), ticks, number formatting |
 | `State` | `state`, gate masks (`gateMask`, `computeMasks`) |
-| `Plot panel` | `class Panel`: drawing, axes, gates, handles, pointer handling |
+| `Plot panel` | `class Panel`: drawing, axes, gates, quadrants, handles, pointer handling |
 | `Axis menu` | Right-click channel / scale menu |
 | `Undo / redo` | Snapshots of gates, compensation, cell-cycle set-up and plots |
-| `Page rendering` | `refresh`, `setCurrent`, population table |
+| `Page rendering` | `refresh`, `setCurrent`, population table (`statsFor`, `kth` selection for medians) |
 | `Compensation` | `applyComp`, `calcFromControls`, `autoCellMask`, `detectControls` |
 | `Cell cycle` | `fitCellCycle`, `singletWedge`, `runCellCycle`, results |
 | `Example data` | `writeFCS`, `makeTube`, `makeCellCycleTube` (synthetic tubes, seeded) |
@@ -53,6 +53,8 @@ Everything is in `index.html`, in this order:
 
 A few conventions:
 - **Gates live in data coordinates** (`g.pts`) together with the scale types they were drawn on (`g.xs`, `g.ys`). Membership is tested in that display space. `±EDGE` (1e30) means "this edge is open-ended".
+- **Quadrants are four ordinary polygon gates** with `shape: 'quad'`, a shared `quad.group`, their position `quad.q` (1–4) and the centre `qc`. Always move them with `setQuadCentre()` so the four stay linked.
+- **Theme tokens are cached** (`tok()`, `palette()`); call `themeChanged()` (or `redraw()`) after changing CSS variables.
 - **Raw data stays in `s.raw`**; `s.cols` holds compensated values when compensation is on. Calculations of spillover always use `s.raw`.
 - **Anything that changes the analysis should end in `refresh()`**, which also records an Undo step. Changes that do not refresh call `markChange()` themselves.
 - **No external libraries and no network access** beyond Google Fonts. Keep it working offline.

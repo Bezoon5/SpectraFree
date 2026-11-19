@@ -30,12 +30,15 @@ Online or offline with your own data. Export FCS files from your cytometer softw
 ### Plots and gating
 - **Any number of plots** (up to 8), each a density dot plot or a histogram. **+ Add plot** opens a new plot on the selected gate's population.
 - **Change channels from the axis**, as in desktop FACS software: right-click an axis title for every channel and the scale (Linear, Log, Biexponential).
-- **Rectangle, polygon and histogram range gates**, nested to any depth. Drawing a gate moves the next plot into that population.
+- **Rectangle, polygon, quadrant and histogram range gates**, nested to any depth. Drawing a gate moves the next plot into that population.
+- **Quadrant gates** split a plot into four populations (Q1 X− Y+, Q2 X+ Y+, Q3 X+ Y−, Q4 X− Y−) with one click. Drag the centre, either line, or anywhere inside to move the cross; the four quadrants always add up to the parent population.
 - **Resize gates by their handles**: corners and sides for rectangles (they stay rectangular), corners for polygons, ends for ranges. Double-click a polygon edge to add a corner, or a corner to remove it.
 - **Gates apply across samples** by channel name. Switch tubes with ‹ › or the arrow keys and every plot and percentage updates.
 - **Population table** with events, % of parent, % of total, median, mean and CV. **Copy table** pastes straight into Excel.
 
 ![Three plots: an FSC/SSC plot with a selected lymphocyte gate showing resize handles, an FL1/FL2 plot, and an FL1 histogram with a FITC+ range gate](docs/screenshots/gating.png)
+
+![A quadrant gate on compensated FITC against PE data, shown on biexponential axes, with the percentage of each quadrant in the plot corners](docs/screenshots/quadrant.png)
 
 ### Compensation
 - **Editable spillover matrix**, applied live to plots, gates and statistics. Compensated axes are labelled `Comp-`.
@@ -106,16 +109,16 @@ The automated checks in [`tests/smoke.mjs`](tests/smoke.mjs) run the app in a he
 - **Not validated for clinical or diagnostic use.** Use it for training, teaching and exploratory research.
 - **No saved workspaces yet**: gates and the compensation matrix are lost when you close the page.
 - **One compensation matrix** applies to all samples. Height (-H) channels are not compensated unless you tick them.
-- **No quadrant gates, dimensionality reduction (t-SNE/UMAP), clustering or batch export** yet.
-- **Files of more than about a million events** work, but get slower; live updates while dragging a gate switch off for large files.
+- **No dimensionality reduction (t-SNE/UMAP), clustering or batch export** yet.
+- **Very large files** work: a 1-million-event, 10-channel file opens in about a tenth of a second of processing and the plots refresh in about 50 ms. Live updates while dragging a gate switch off above roughly 3 million event-gates, to keep dragging smooth.
 - **The cell-cycle model is a simplified Dean-Jett-Fox fit.** It expects a clear G0/G1 peak with a G2/M peak at about twice the DNA.
 
 ## How it works
 
-Everything lives in [`index.html`](index.html): about 2,000 lines of plain HTML, CSS and JavaScript, with no framework, no build step and no external libraries. The only network request is for Google Fonts, and the app works without it.
+Everything lives in [`index.html`](index.html): about 2,200 lines of plain HTML, CSS and JavaScript, with no framework, no build step and no external libraries. The only network request is for Google Fonts, and the app works without it.
 
 - **FCS parsing** reads the HEADER, TEXT and DATA segments straight from the file's bytes.
-- **Plots** are drawn on HTML canvas as binned density images with a pseudocolour scale.
+- **Plots** are drawn on HTML canvas as binned density images with a pseudocolour scale. The **Biexponential** axis is an arcsinh transform whose linear zone around zero is sized from the data (how far it reaches below zero), so compensated populations spread out instead of piling up at zero.
 - **Gates** are stored in data coordinates and tested in display space, so they stay correct when you change scales. Edges drawn on a plot border extend to infinity, so off-scale events stay inside.
 - **Compensation** multiplies each event by the inverse of the spillover matrix.
 - **Cell cycle** fits the DNA histogram as described above.

@@ -122,14 +122,16 @@ select{cursor:pointer}
 .tools button:first-child{border-left:0}
 .tools button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
 .tools button:hover:not([aria-pressed="true"]){background:var(--surface-2)}
-.axes{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.1fr) minmax(0,1.1fr);gap:8px}
+.axes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.axes .field:first-child{grid-column:1/-1}
+.axes .field:first-child select{max-width:calc(50% - 4px)}
 .phead .pname{margin-right:auto}
 @media (max-width:560px){.axes{grid-template-columns:minmax(0,1fr)}}
 .field{display:flex;flex-direction:column;gap:3px;min-width:0}
 .field label{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
 .pair{display:flex;gap:4px;min-width:0}
 .pair select:first-child{flex:1 1 auto;min-width:0}
-.pair select:last-child{flex:0 0 auto;width:82px}
+.pair select:last-child{flex:0 0 auto;width:136px}
 .field>select{width:100%}
 .plotbox{position:relative;width:100%;aspect-ratio:1/1;max-width:100%}
 .plotbox canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
@@ -340,7 +342,7 @@ fieldset.chs legend{font-size:11px;text-transform:uppercase;letter-spacing:.06em
     </div>
     <div class="tablewrap"><table id="popTable"></table></div>
     <div id="copyFallback" hidden><p class="note">Your browser blocked automatic copying. The table is selected below: press Ctrl+C (or ⌘C) to copy it.</p><textarea id="copyText" class="copyfall" aria-label="Table text to copy"></textarea></div>
-    <p class="note">Gates apply to every loaded sample, matched by channel name, so you can switch tubes and compare. Right-click an axis title (or click it with the Select tool) to change its channel or scale. Click a gate to select it. Drag inside it to move it, or drag its handles to resize it: corners and sides for rectangles, corners for polygons, ends for histogram ranges. Double-click a polygon's edge to add a corner, or a corner to remove it. Press Esc during a drag to undo it, or Delete to remove the selected gate. To draw a polygon, click to add corners, then double-click or click the first corner to close.</p>
+    <p class="note">Gates apply to every loaded sample, matched by channel name, so you can switch tubes and compare. Right-click an axis title (or click it with the Select tool) to change its channel or scale. Click a gate to select it. Drag inside it to move it, or drag its handles to resize it: corners and sides for rectangles, corners for polygons, ends for histogram ranges. Double-click a polygon's edge to add a corner, or a corner to remove it. A quadrant moves as one: drag its centre, either line, or anywhere inside it. Press Esc during a drag to undo it, or Delete to remove the selected gate. To draw a polygon, click to add corners, then double-click or click the first corner to close.</p>
   </section>
 
   <details class="card kw">
@@ -437,19 +439,22 @@ function parseFCS(buf, name){
     c.isScatter = /^(FSC|SSC)/i.test(c.name);
   });
   const idx = {}; ch.forEach((c, i) => { if (!(c.name in idx)) idx[c.name] = i; });
-  return {name, kw, ver, n, ch, cols: cols.slice(), raw: cols, idx, ucache: new Map(), example: false, spill: parseSpill(kw, ch)};
+  return {name, kw, ver, n, ch, cols: cols.slice(), raw: cols, idx, ucache: new Map(), example: false, spill: parseSpill(kw, ch),
+    moreData: +(kw['$NEXTDATA'] || 0) > 0};
 }
 function chStats(c, a, n){
   let mn = Infinity, mx = -Infinity;
   for (let i = 0; i < n; i++){ const v = a[i]; if (v < mn) mn = v; if (v > mx) mx = v; }
   c.min = n ? mn : 0; c.max = n ? mx : 1;
-  const step = Math.max(1, Math.floor(n / 20000)), pos = [];
-  for (let i = 0; i < n; i += step) if (a[i] > 0) pos.push(a[i]);
-  pos.sort((x, y) => x - y);
-  c.plo = pos.length ? pos[Math.floor(pos.length * 0.005)] : 0;
-  const all = []; for (let i = 0; i < n; i += step) all.push(a[i]);
-  all.sort((x, y) => x - y);
-  c.phi = all.length ? all[Math.floor((all.length - 1) * 0.999)] : 0;
+  // percentiles from an evenly spaced sample of at most ~20,000 events
+  const step = Math.max(1, Math.floor(n / 20000)), smp = new Float64Array(Math.ceil(n / step));
+  let k = 0; for (let i = 0; i < n; i += step) smp[k++] = a[i];
+  const v = smp.subarray(0, k).sort();
+  let lo = 0, hi = k; while (lo < hi){ const mid = (lo + hi) >> 1; if (v[mid] > 0) hi = mid; else lo = mid + 1; }
+  const npos = k - lo;
+  c.plo = npos ? v[lo + Math.floor(npos * 0.005)] : 0;
+  c.phi = k ? v[Math.floor((k - 1) * 0.999)] : 0;
+  c.pneg = k ? v[Math.floor((k - 1) * 0.02)] : 0; // 2nd percentile: how far the data reaches below zero
 }
 const niceCeil = v => { const p = 10 ** Math.floor(Math.log10(v)); for (const m of [1, 1.2, 1.5, 2, 2.5, 3, 3.5, 4, 5, 6, 7, 8, 10]) if (m * p >= v) return m * p; return 10 * p; };
 const DNA_DYE = /(^|[^a-z])(PI|propidium|DAPI|7-?AAD|DRAQ ?5|Hoechst|DNA|FxCycle|Vybrant)([^a-z]|$)/i;
@@ -479,7 +484,8 @@ function makeScale(type, c){
     return {type, lo, hi: R, fwd: v => v > 0 ? (Math.log10(v) - a) / k : -1, inv: u => Math.pow(10, a + u * k), a, b};
   }
   if (type === 'asinh'){
-    const cf = Math.max(R / 1750, 1), lo = -10 * cf, A = Math.asinh(lo / cf), B = Math.asinh(R / cf), k = B - A;
+    // linear zone sized from the data: the spread below zero (e.g. after compensation), else the dimmest positive events
+    const cf = c.pneg < 0 ? Math.max(-c.pneg, 1) : c.plo > 0 ? Math.max(c.plo, 1) : Math.max(R / 1750, 1), lo = -10 * cf, A = Math.asinh(lo / cf), B = Math.asinh(R / cf), k = B - A;
     return {type, lo, hi: R, cf, fwd: v => (Math.asinh(v / cf) - A) / k, inv: u => cf * Math.sinh(A + u * k)};
   }
   const hi = c.isTime ? Math.max(c.max, 1) : (c.phi > 0 ? Math.min(R, niceCeil(c.phi * 1.25)) : R);
@@ -591,7 +597,14 @@ function treeOrder(){
 }
 
 /* ---------------- Colours ---------------- */
-function tok(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+const tokCache = new Map();
+function tok(name){
+  let v = tokCache.get(name);
+  if (v === undefined){ v = getComputedStyle(document.documentElement).getPropertyValue(name).trim(); tokCache.set(name, v); }
+  return v;
+}
+let palCache = null;
+function themeChanged(){ tokCache.clear(); palCache = null; }
 function hexRGB(h){
   h = h.replace('#', ''); if (h.length === 3) h = h.split('').map(c => c + c).join('');
   const n = parseInt(h, 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
@@ -606,8 +619,8 @@ function buildLUT(){
   return lut;
 }
 function palette(){
-  return {ink: tok('--ink'), muted: tok('--muted'), line: tok('--line'), plot: tok('--plot'), accent: tok('--accent'),
-    gate: tok('--gate'), sel: tok('--sel'), surface: tok('--surface'), lut: buildLUT()};
+  return palCache || (palCache = {ink: tok('--ink'), muted: tok('--muted'), line: tok('--line'), plot: tok('--plot'), accent: tok('--accent'),
+    gate: tok('--gate'), sel: tok('--sel'), surface: tok('--surface'), fSans: tok('--f-sans'), fMono: tok('--f-mono'), lut: buildLUT()});
 }
 
 /* ---------------- Plot panel ---------------- */
@@ -632,6 +645,7 @@ class Panel {
           <button type="button" data-tool="select" title="Select and move gates">Select</button>
           <button type="button" data-tool="rect" title="Drag to draw a rectangle gate">Rectangle</button>
           <button type="button" data-tool="poly" title="Click corners, double-click to finish">Polygon</button>
+          <button type="button" data-tool="quad" title="Click to place a quadrant: four gates split by one vertical and one horizontal line">Quadrant</button>
           <button type="button" data-tool="range" title="Drag across the histogram to draw a range gate">Range</button>
         </div>
         <button type="button" class="premove" title="Remove this plot" aria-label="Remove plot ${key}">×</button>
@@ -703,12 +717,12 @@ class Panel {
     this.draft = null; this.setTool('select'); this.syncControls(); this.draw(); markChange();
   }
   setTool(t){
-    if (this.isHist && (t === 'rect' || t === 'poly')) t = 'select';
+    if (this.isHist && (t === 'rect' || t === 'poly' || t === 'quad')) t = 'select';
     if (!this.isHist && t === 'range') t = 'select';
     this.tool = t; this.draft = null;
     this.toolBtns.forEach(b => {
       b.setAttribute('aria-pressed', String(b.dataset.tool === t));
-      b.hidden = this.isHist ? (b.dataset.tool === 'rect' || b.dataset.tool === 'poly') : b.dataset.tool === 'range';
+      b.hidden = this.isHist ? (b.dataset.tool === 'rect' || b.dataset.tool === 'poly' || b.dataset.tool === 'quad') : b.dataset.tool === 'range';
     });
     this.box.classList.toggle('drawing', t !== 'select');
     this.drawOver();
@@ -726,8 +740,7 @@ class Panel {
     this.syncControls();
   }
   fillPops(){
-    const opts = [`<option value="all">All events</option>`].concat(
-      treeOrder().map(({g, depth}) => `<option value="${g.id}">${'  '.repeat(depth - 1)}${esc(g.name)}</option>`));
+    const opts = [`<option value="all">All events</option>`, gateOptions()];
     this.popSel.innerHTML = opts.join('');
     if (this.pop !== 'all' && !gateById(this.pop)) this.pop = 'all';
     this.popSel.value = String(this.pop);
@@ -762,7 +775,7 @@ class Panel {
     const mask = popMask(s, this.pop), xi = s.idx[this.xn];
     const {sx, sy} = this.scales(s);
     this.sx = sx; this.sy = sy;
-    let shown = 0; for (let i = 0; i < s.n; i++) shown += mask[i];
+    const shown = popCount(s, this.pop);
     if (this.isHist){
       const NB = Math.max(64, Math.min(256, Math.floor(G.w / 2))), bins = new Float64Array(NB), U = getU(s, xi, this.xs);
       for (let i = 0; i < s.n; i++) if (mask[i]) bins[Math.min(NB - 1, (U[i] * NB) | 0)]++;
@@ -788,8 +801,10 @@ class Panel {
         cnt[by * gw + bx]++;
       }
       let mx = 0; for (let i = 0; i < cnt.length; i++) if (cnt[i] > mx) mx = cnt[i];
-      const off = document.createElement('canvas'); off.width = gw; off.height = gh;
-      const octx = off.getContext('2d'), img = octx.createImageData(gw, gh), lm = Math.log(1 + mx) || 1, L = pal.lut;
+      const off = this.off || (this.off = document.createElement('canvas'));
+      if (off.width !== gw || off.height !== gh){ off.width = gw; off.height = gh; this.img = null; }
+      const octx = off.getContext('2d'), img = this.img || (this.img = octx.createImageData(gw, gh)), lm = Math.log(1 + mx) || 1, L = pal.lut;
+      img.data.fill(0);
       for (let i = 0; i < cnt.length; i++){
         if (!cnt[i]) continue;
         const k = Math.min(255, Math.round(Math.log(1 + cnt[i]) / lm * 255)) * 3;
@@ -803,6 +818,7 @@ class Panel {
     }
     ctx.strokeStyle = pal.line; ctx.lineWidth = 1; ctx.strokeRect(G.x0 + .5, G.y0 + .5, G.w - 1, G.h - 1);
     this.countEl.textContent = `${nf.format(shown)} events · ${popName(this.pop)}`;
+    this.over.setAttribute('aria-label', `Plot ${this.key}: ${this.isHist ? 'histogram of ' + chLabel(s, this.xn) : chLabel(s, this.xn) + ' against ' + chLabel(s, this.yn)}, ${popName(this.pop)}, ${nf.format(shown)} events. Draw gates here.`);
     this.drawOver();
   }
   tickLabel(ctx, t, x, y, align, pal){
@@ -896,13 +912,15 @@ class Panel {
     const ctx = this.over.getContext('2d'); ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     ctx.clearRect(0, 0, this.size, this.size);
     const s = cur(); this.paths = [];
-    if (!s || !this.sx) return;
+    // scales are rebuilt by draw(); until then (e.g. mid-switch from histogram to dot plot) there is nothing to overlay
+    if (!s || !this.sx || (!this.isHist && !this.sy)) return;
     const pal = palette(), G = this.geom();
     ctx.save(); ctx.beginPath(); ctx.rect(G.x0 - 1, G.y0 - 1, G.w + 2, G.h + 2); ctx.clip();
     this.drawCellCycleModel(ctx, G);
     let rangeN = 0;
     for (const g of this.gatesHere()){
       const {p, box} = this.gatePath(g, s); this.paths.push({g, p});
+      if (g.shape === 'quad') continue;
       const selected = state.sel === g.id, col = selected ? pal.sel : pal.gate;
       ctx.lineWidth = selected ? 2.25 : 1.5; ctx.strokeStyle = col;
       if (g.type === 'range' && selected){ ctx.globalAlpha = .1; ctx.fillStyle = col; ctx.fill(p); ctx.globalAlpha = 1; }
@@ -918,11 +936,13 @@ class Panel {
       ctx.strokeStyle = col; ctx.lineWidth = 1; ctx.strokeRect(lx + .5, ly + .5, tw - 1, 17);
       ctx.fillStyle = col; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(txt, lx + 5, ly + 9.5);
     }
+    this.drawQuadrants(ctx, G, s, pal);
     const selG = this.gatesHere().find(g => g.id === state.sel);
     const drawHandles = () => { if (!selG || this.draft) return;
       for (const h of this.handlesFor(selG)){
         ctx.fillStyle = pal.surface; ctx.strokeStyle = pal.sel; ctx.lineWidth = 1.5;
         if (h.kind === 'v'){ ctx.fillRect(h.x - 4.5, h.y - 4.5, 9, 9); ctx.strokeRect(h.x - 4.5, h.y - 4.5, 9, 9); }
+        else if (h.kind === 'qc'){ ctx.fillRect(h.x - 6, h.y - 6, 12, 12); ctx.strokeRect(h.x - 6, h.y - 6, 12, 12); }
         else if (h.kind === 'e'){ ctx.beginPath(); ctx.arc(h.x, h.y, 4, 0, 7); ctx.fill(); ctx.stroke(); }
         else { ctx.beginPath(); ctx.roundRect ? ctx.roundRect(h.x - 4, h.y - 12, 8, 24, 3) : ctx.rect(h.x - 4, h.y - 12, 8, 24); ctx.fill(); ctx.stroke(); }
       }
@@ -988,6 +1008,35 @@ class Panel {
     const mx = e.clientX - r.left, my = e.clientY - r.top;
     return {mx, my, u: clamp((mx - G.x0) / G.w, -0.02, 1.02), v: clamp(1 - (my - G.y0) / G.h, -0.02, 1.02)};
   }
+  quadGroups(){
+    if (!this.sx || !this.sy || this.isHist) return [];
+    const by = new Map(), G = this.geom();
+    for (const g of this.gatesHere()) if (g.shape === 'quad'){ const k = g.quad.group; if (!by.has(k)) by.set(k, []); by.get(k).push(g); }
+    return [...by.values()].map(gs => {
+      const [cx, cy] = gs[0].qc;
+      const [X] = this.toPx(clamp(cu(this.sx.fwd(cx)), 0, 1), 0), [, Y] = this.toPx(0, clamp(cu(this.sy.fwd(cy)), 0, 1));
+      return {gs: gs.sort((a, b) => a.quad.q - b.quad.q), X, Y, G};
+    });
+  }
+  drawQuadrants(ctx, G, s, pal){
+    for (const {gs, X, Y} of this.quadGroups()){
+      const active = gs.some(g => g.id === state.sel), col = active ? pal.sel : pal.gate;
+      ctx.strokeStyle = col; ctx.lineWidth = active ? 2.25 : 1.5;
+      ctx.beginPath(); ctx.moveTo(X, G.y0); ctx.lineTo(X, G.y0 + G.h); ctx.moveTo(G.x0, Y); ctx.lineTo(G.x0 + G.w, Y); ctx.stroke();
+      ctx.font = '600 11.5px ' + pal.fSans; ctx.textBaseline = 'middle';
+      for (const g of gs){
+        const parentN = popCount(s, g.parent ?? 'all'), c = popCount(s, g.id);
+        const txt = `${g.name}  ${parentN ? (100 * c / parentN).toFixed(1) : '0.0'}%`, tw = ctx.measureText(txt).width + 10;
+        const right = g.quad.q === 2 || g.quad.q === 3, top = g.quad.q <= 2;
+        const lx = right ? G.x0 + G.w - tw - 6 : G.x0 + 6, ly = top ? G.y0 + 6 : G.y0 + G.h - 24;
+        const lc = g.id === state.sel ? pal.sel : pal.gate;
+        ctx.fillStyle = pal.surface; ctx.globalAlpha = .9; ctx.fillRect(lx, ly, tw, 18); ctx.globalAlpha = 1;
+        ctx.strokeStyle = lc; ctx.lineWidth = 1; ctx.strokeRect(lx + .5, ly + .5, tw - 1, 17);
+        ctx.fillStyle = lc; ctx.textAlign = 'left'; ctx.fillText(txt, lx + 5, ly + 9.5);
+      }
+    }
+  }
+  quadCentreFrom(u, v){ return [this.sx.inv(clamp(u, 0.005, 0.995)), this.sy.inv(clamp(v, 0.005, 0.995))]; }
   // corner / side / end handles, in panel pixels
   handlesFor(g){
     const G0 = this.geom(), inX = x => clamp(x, G0.x0, G0.x0 + G0.w), inY = y => clamp(y, G0.y0, G0.y0 + G0.h);
@@ -1000,13 +1049,24 @@ class Panel {
       g.pts.forEach((p, i) => { const [x] = this.toPx(cu(this.sx.fwd(p[0])), 0); out.push({kind: 'r', i, x, y: G.y0 + G.h / 2}); });
       return out;
     }
+    if (g.shape === 'quad'){
+      const grp = this.quadGroups().find(q => q.gs.includes(g));
+      return grp ? [{kind: 'qc', i: 0, x: grp.X, y: grp.Y}] : [];
+    }
     const P = g.pts.map(p => this.toPx(cu(this.sx.fwd(p[0])), cu(this.sy.fwd(p[1]))));
     P.forEach(([x, y], i) => out.push({kind: 'v', i, x, y}));
     if (g.shape === 'rect') for (let k = 0; k < 4; k++){ const a = P[k], b = P[(k + 1) % 4]; out.push({kind: 'e', i: k, x: (a[0] + b[0]) / 2, y: (a[1] + b[1]) / 2}); }
     return out;
   }
   hitHandle(mx, my, r){
-    const gs = this.gatesHere().sort((a, b) => (b.id === state.sel) - (a.id === state.sel));
+    const G = this.geom(), inside = mx >= G.x0 && mx <= G.x0 + G.w && my >= G.y0 && my <= G.y0 + G.h;
+    for (const {gs, X, Y} of this.quadGroups()){
+      const pick = gs.find(g => g.id === state.sel) || gs[1] || gs[0];
+      if (Math.hypot(X - mx, Y - my) <= r + 2) return {g: pick, h: {kind: 'qc'}};
+      if (inside && Math.abs(mx - X) <= r * 0.75) return {g: pick, h: {kind: 'qx'}};
+      if (inside && Math.abs(my - Y) <= r * 0.75) return {g: pick, h: {kind: 'qy'}};
+    }
+    const gs = this.gatesHere().filter(g => g.shape !== 'quad').sort((a, b) => (b.id === state.sel) - (a.id === state.sel));
     for (const g of gs){
       let best = null, bd = r;
       for (const h of this.handlesFor(g)){
@@ -1017,8 +1077,13 @@ class Panel {
     }
     return null;
   }
-  handleCursor(h){ return h.kind === 'r' ? 'ew-resize' : h.kind === 'e' ? (h.i % 2 ? 'ew-resize' : 'ns-resize') : 'grab'; }
+  handleCursor(h){ return h.kind === 'r' || h.kind === 'qx' ? 'ew-resize' : h.kind === 'qy' ? 'ns-resize' : h.kind === 'qc' ? 'move' : h.kind === 'e' ? (h.i % 2 ? 'ew-resize' : 'ns-resize') : 'grab'; }
   applyHandle(g, h, u, v){
+    if (g.shape === 'quad'){
+      const [nx, ny] = this.quadCentreFrom(u, v), [cx, cy] = g.qc;
+      setQuadCentre(g.quad.group, h.kind === 'qy' ? cx : nx, h.kind === 'qx' ? cy : ny);
+      return;
+    }
     const x = edgeInv(this.sx, u), y = this.sy ? edgeInv(this.sy, v) : 0;
     if (h.kind === 'r'){ g.pts[h.i] = [x]; return; }
     if (g.shape === 'rect'){
@@ -1057,14 +1122,20 @@ class Panel {
       if (hh){
         selectGate(hh.g.id);
         this.drag = {mode: 'handle', g: hh.g, h: hh.h, orig: hh.g.pts.map(p => p.slice()), moved: false};
+        if (hh.g.shape === 'quad'){ const q0 = hh.g.qc.slice(), grp = hh.g.quad.group; this.drag.restore = () => setQuadCentre(grp, q0[0], q0[1]); }
         this.over.setPointerCapture(e.pointerId); this.over.style.cursor = hh.h.kind === 'v' ? 'grabbing' : this.handleCursor(hh.h);
         return;
       }
       const g = this.hitGate(P.mx, P.my);
       selectGate(g ? g.id : null);
-      if (g){ this.drag = {mode: 'move', g, u0: P.u, v0: P.v, orig: g.pts.map(p => p.slice()), moved: false}; this.over.setPointerCapture(e.pointerId); }
+      if (g){
+        this.drag = {mode: g.shape === 'quad' ? 'quadmove' : 'move', g, u0: P.u, v0: P.v, orig: g.pts.map(p => p.slice()), moved: false};
+        if (g.shape === 'quad'){ const q0 = g.qc.slice(), grp = g.quad.group; this.drag.qc0 = q0; this.drag.restore = () => setQuadCentre(grp, q0[0], q0[1]); }
+        this.over.setPointerCapture(e.pointerId);
+      }
       return;
     }
+    if (this.tool === 'quad'){ this.addQuadrant(P.u, P.v); return; }
     if (this.tool === 'rect' || this.tool === 'range'){
       this.draft = {type: this.tool, u0: P.u, v0: P.v, u1: P.u, v1: P.v};
       this.over.setPointerCapture(e.pointerId); this.drawOver(); return;
@@ -1103,6 +1174,13 @@ class Panel {
         this.over.style.cursor = hh ? this.handleCursor(hh.h) : (this.hitGate(P.mx, P.my) ? 'move' : '');
       } else this.over.style.cursor = '';
     }
+    if (this.drag && this.drag.mode === 'quadmove'){
+      const du = P.u - this.drag.u0, dv = P.v - this.drag.v0, [cx, cy] = this.drag.qc0;
+      if (Math.abs(du) + Math.abs(dv) > 0.002) this.drag.moved = true;
+      const [nx, ny] = this.quadCentreFrom(this.sx.fwd(cx) + du, this.sy.fwd(cy) + dv);
+      setQuadCentre(this.drag.g.quad.group, nx, ny);
+      liveRefresh(); return;
+    }
     if (this.drag){
       const du = P.u - this.drag.u0, dv = P.v - this.drag.v0, g = this.drag.g;
       if (Math.abs(du) + Math.abs(dv) > 0.002) this.drag.moved = true;
@@ -1139,7 +1217,7 @@ class Panel {
   editCorners(e){
     const s = cur(); if (!s || !this.sx || this.isHist) return;
     const P = this.evtPos(e);
-    const g = this.gatesHere().find(x => x.id === state.sel); if (!g || g.type !== 'poly' || g.shape === 'rect') return;
+    const g = this.gatesHere().find(x => x.id === state.sel); if (!g || g.type !== 'poly' || g.shape === 'rect' || g.shape === 'quad') return;
     const H = this.handlesFor(g).filter(h => h.kind === 'v');
     const hit = H.find(h => Math.hypot(h.x - P.mx, h.y - P.my) <= 9);
     if (hit){
@@ -1160,6 +1238,20 @@ class Panel {
   finishPoly(){
     const d = this.draft; if (!d || d.pts.length < 3){ return; }
     this.addGate('poly', d.pts.map(([u, v]) => [edgeInv(this.sx, u), edgeInv(this.sy, v)]));
+  }
+  addQuadrant(u, v){
+    const s = cur(), [cx, cy] = this.quadCentreFrom(u, v), group = state.nextId;
+    const short = n => { const c = chOf(s, n); return c?.stain || n.replace(/-[AHW]$/i, ''); };
+    const X = short(this.xn), Y = short(this.yn), parent = this.pop === 'all' ? null : this.pop;
+    const signs = {1: ['−', '+'], 2: ['+', '+'], 3: ['+', '−'], 4: ['−', '−']};
+    let pick = null;
+    for (const q of [1, 2, 3, 4]){
+      const g = {id: state.nextId++, name: `Q${q} ${X}${signs[q][0]} ${Y}${signs[q][1]}`, parent, type: 'poly', shape: 'quad',
+        quad: {group, q}, qc: [cx, cy], xch: this.xn, ych: this.yn, xs: this.xs, ys: this.ys, pts: quadPts(q, cx, cy)};
+      state.gates.push(g); if (q === 2) pick = g.id;
+    }
+    state.sel = pick; this.draft = null; this.setTool('select');
+    refresh();
   }
   addGate(type, pts, shape){
     const g = {id: state.nextId++, name: `P${state.nextId - 1}`, parent: this.pop === 'all' ? null : this.pop, type, shape: shape || type,
@@ -1247,10 +1339,11 @@ function markChange(){
 function describeChange(a, b){
   const same = (x, y) => snapSig(x) === snapSig(y);
   if (!same(a.cc, b.cc)) return 'cell-cycle auto-gating';
-  if (b.gates.length > a.gates.length){ const n = b.gates.filter(g => !a.gates.some(h => h.id === g.id)); return n.length === 1 ? `add gate ${n[0].name}` : 'add gates'; }
-  if (b.gates.length < a.gates.length){ const n = a.gates.filter(g => !b.gates.some(h => h.id === g.id)); return n.length === 1 ? `delete gate ${n[0].name}` : `delete gate ${n[0].name} and the gates inside it`; }
+  if (b.gates.length > a.gates.length){ const n = b.gates.filter(g => !a.gates.some(h => h.id === g.id)); return n.length === 1 ? `add gate ${n[0].name}` : n.every(g => g.quad) ? 'add quadrant' : 'add gates'; }
+  if (b.gates.length < a.gates.length){ const n = a.gates.filter(g => !b.gates.some(h => h.id === g.id)); return n.length === 1 ? `delete gate ${n[0].name}` : n[0].quad ? 'delete quadrant' : `delete gate ${n[0].name} and the gates inside it`; }
   for (const g of b.gates){
     const o = a.gates.find(h => h.id === g.id); if (!o) continue;
+    if (g.quad && o.name === g.name && JSON.stringify(o.qc) !== JSON.stringify(g.qc)) return 'move quadrant';
     if (o.name !== g.name) return `rename gate ${o.name} to ${g.name}`;
     if (JSON.stringify(o.pts) !== JSON.stringify(g.pts)) return `${o.pts.length === g.pts.length ? 'move or resize' : 'edit corners of'} gate ${g.name}`;
   }
@@ -1368,15 +1461,32 @@ function setCurrentInner(i){
   refresh();
 }
 
+// k-th smallest value in place (Wirth/Hoare selection): O(n) on average, versus O(n log n) for a full sort
+function kth(a, k){
+  let l = 0, m = a.length - 1;
+  while (l < m){
+    const x = a[k]; let i = l, j = m;
+    do {
+      while (a[i] < x) i++;
+      while (x < a[j]) j--;
+      if (i <= j){ const t = a[i]; a[i] = a[j]; a[j] = t; i++; j--; }
+    } while (i <= j);
+    if (j < k) l = i;
+    if (k < i) m = j;
+  }
+  return a[k];
+}
 function statsFor(s, mask, X){
   let c = 0; for (let i = 0; i < s.n; i++) c += mask[i];
   if (!c || !X) return {c, med: NaN, mean: NaN, cv: NaN};
   const v = new Float32Array(c); let k = 0, sum = 0;
   for (let i = 0; i < s.n; i++) if (mask[i]){ v[k++] = X[i]; sum += X[i]; }
-  v.sort(); const mean = sum / c;
+  const mean = sum / c;
   let ss = 0; for (let i = 0; i < c; i++) ss += (v[i] - mean) ** 2;
   const sd = c > 1 ? Math.sqrt(ss / (c - 1)) : 0;
-  const med = c % 2 ? v[(c - 1) / 2] : (v[c/2 - 1] + v[c/2]) / 2;
+  const h = c >> 1, upper = kth(v, h);
+  let med = upper;
+  if (c % 2 === 0){ let lower = -Infinity; for (let i = 0; i < h; i++) if (v[i] > lower) lower = v[i]; med = (lower + upper) / 2; }
   return {c, med, mean, cv: mean ? 100 * sd / Math.abs(mean) : NaN};
 }
 function popRows(){
@@ -1399,8 +1509,18 @@ function renderTable(){
       return `<tr data-id="${r.id}" class="${state.sel === r.id ? 'sel' : ''}"><td><div class="pcell">${name}</div></td><td>${nf.format(r.c)}</td><td>${r.parent == null ? '—' : fmtN(pc, 1) + '%'}</td><td>${fmtN(total ? 100 * r.c / total : 0, 1)}%</td><td>${fmtN(r.med, 0)}</td><td>${fmtN(r.mean, 0)}</td><td>${Number.isFinite(r.cv) ? fmtN(r.cv, 1) + '%' : '—'}</td><td>${r.id === 'all' ? '' : `<button type="button" class="del" data-del="${r.id}">Delete</button>`}</td></tr>`;
     }).join('') + '</tbody>';
 }
+// quadrant n: 1 = X− Y+ (top left), 2 = X+ Y+, 3 = X+ Y−, 4 = X− Y− ; outer edges are open-ended
+function quadPts(q, cx, cy){
+  const E = EDGE;
+  return {1: [[-E, cy], [cx, cy], [cx, E], [-E, E]], 2: [[cx, cy], [E, cy], [E, E], [cx, E]],
+          3: [[cx, -E], [E, -E], [E, cy], [cx, cy]], 4: [[-E, -E], [cx, -E], [cx, cy], [-E, cy]]}[q];
+}
+function setQuadCentre(group, cx, cy){
+  for (const g of state.gates) if (g.quad?.group === group){ g.qc = [cx, cy]; g.pts = quadPts(g.quad.q, cx, cy); }
+}
 function deleteGate(id){
-  const kill = new Set([id]); let grew = true;
+  const g0 = gateById(id);
+  const kill = new Set(g0?.quad ? state.gates.filter(g => g.quad?.group === g0.quad.group).map(g => g.id) : [id]); let grew = true;
   while (grew){ grew = false; for (const g of state.gates) if (!kill.has(g.id) && kill.has(g.parent)){ kill.add(g.id); grew = true; } }
   state.gates = state.gates.filter(g => !kill.has(g.id));
   panels.forEach(p => { if (kill.has(p.pop)) p.pop = 'all'; });
@@ -1482,29 +1602,13 @@ function renderComp(){
   $('#compOn').checked = C.on;
   fillCompPop();
 }
+// <option>s for every gate, indented by depth (used by the plot, compensation and cell-cycle pickers)
+const gateOptions = (filter = () => true) => treeOrder().filter(({g}) => filter(g)).map(({g, depth}) => `<option value="${g.id}">${'\u00a0\u00a0'.repeat(depth - 1)}${esc(g.name)}</option>`).join('');
 function fillCompPop(){
   const sel = $('#ctrlPop'), C = state.comp;
-  sel.innerHTML = `<option value="auto">Automatic: cells (excludes debris and saturated events)</option><option value="all">All events</option>` + treeOrder().map(({g, depth}) => `<option value="${g.id}">${'\u00a0\u00a0'.repeat(depth - 1)}${esc(g.name)}</option>`).join('');
+  sel.innerHTML = `<option value="auto">Automatic: cells (excludes debris and saturated events)</option><option value="all">All events</option>` + gateOptions();
   if (C.pop !== 'all' && C.pop !== 'auto' && !gateById(C.pop)) C.pop = 'auto';
   sel.value = String(C.pop);
-}
-function autoAssign(){
-  const C = state.comp, s0 = cur(); if (!s0) return;
-  const names = C.chs.filter(n => n in s0.idx), ss = state.samples;
-  C.unst = ss.find(x => /unstain|unlabel|blank|\bunst\b|\bneg(ative)?\b|\bno ?ab\b/i.test(x.name)) || (ss.includes(C.unst) ? C.unst : null);
-  const used = new Set(Object.entries(C.ctrl).filter(([, x]) => ss.includes(x)).map(([n]) => n));
-  const p95 = (s, n) => { const X = s.raw[s.idx[n]], st = Math.max(1, Math.floor(s.n / 20000)), a = []; for (let i = 0; i < s.n; i += st) a.push(X[i]); return pct(a, .95); };
-  for (const x of ss){
-    if (x === C.unst || Object.values(C.ctrl).includes(x)) continue;
-    let hit = names.find(n => {
-      const c = chOf(s0, n), base = n.replace(/-[AHW]$/i, '');
-      return new RegExp(`(^|[^a-z0-9])${escRe(base)}([^a-z0-9]|$)`, 'i').test(x.name) || (c.stain && new RegExp(`(^|[^a-z0-9])${escRe(c.stain)}([^a-z0-9]|$)`, 'i').test(x.name));
-    });
-    if (!hit && C.unst && /single|comp|ctrl|control/i.test(x.name) && names.every(n => n in x.idx)){
-      let bs = 3; for (const n of names){ const sc = p95(x, n) / Math.max(1, p95(C.unst, n)); if (sc > bs && !used.has(n)){ bs = sc; hit = n; } }
-    }
-    if (hit && !used.has(hit)){ C.ctrl[hit] = x; used.add(hit); }
-  }
 }
 function calcFromControls(opts = {}){
   const C = state.comp, s0 = cur(); if (!s0) return;
@@ -1691,7 +1795,7 @@ document.addEventListener('keydown', e => {
   const tag = e.target.tagName;
   if (e.key === 'Escape'){
     let restored = false;
-    panels.forEach(p => { if (p.drag){ p.drag.g.pts = p.drag.orig; p.drag = null; restored = true; } p.draft = null; p.drawOver(); });
+    panels.forEach(p => { if (p.drag){ if (p.drag.restore) p.drag.restore(); else p.drag.g.pts = p.drag.orig; p.drag = null; restored = true; } p.draft = null; p.drawOver(); });
     if (restored) refresh();
     return;
   }
@@ -1726,10 +1830,12 @@ async function loadFiles(files){
       state.comp = {on: false, chs: [], S: {}, ctrl: {}, unst: null, pop: 'auto'};
     }
     const first = state.samples.length; state.samples.push(...added); setCurrent(first);
-    autoAssign(); renderComp();
+    detectControls(); renderComp();
     if (hadExamples) resetHistory(); else markChange();
   }
-  showMsg(errs.length ? `Couldn't open ${errs.join(' · ')}` : '', false);
+  const multi = added.filter(x => x.moreData).map(x => x.name);
+  const note = multi.length ? `${multi.join(', ')} ${multi.length > 1 ? 'contain' : 'contains'} more than one data set; SpectraFree shows the first.` : '';
+  showMsg([errs.length ? `Couldn't open ${errs.join(' · ')}.` : '', note].filter(Boolean).join(' '), !errs.length);
 }
 $('#file').addEventListener('change', e => { loadFiles([...e.target.files]); e.target.value = ''; });
 let dragDepth = 0;
@@ -1739,7 +1845,7 @@ window.addEventListener('dragover', e => { if (hasFiles(e)) e.preventDefault(); 
 window.addEventListener('dragleave', () => { dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth) $('#drop').hidden = true; });
 window.addEventListener('drop', e => { if (!hasFiles(e)) return; e.preventDefault(); dragDepth = 0; $('#drop').hidden = true; loadFiles([...e.dataTransfer.files]); });
 
-const redraw = () => panels.forEach(p => p.draw());
+const redraw = () => { themeChanged(); panels.forEach(p => p.draw()); };
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', redraw);
 new MutationObserver(redraw).observe(document.documentElement, {attributes: true, attributeFilter: ['data-theme']});
 document.fonts?.ready.then(redraw);
@@ -1933,7 +2039,7 @@ function fillCellCycleSetup(){
 }
 function fillCcParent(){
   const sel = $('#ccParent'), cc = state.cc, want = cc ? String(cc.parent) : sel.value || 'all';
-  sel.innerHTML = `<option value="all">All events</option>` + treeOrder().filter(({g}) => !g.cc).map(({g, depth}) => `<option value="${g.id}">${'\u00a0\u00a0'.repeat(depth - 1)}${esc(g.name)}</option>`).join('');
+  sel.innerHTML = `<option value="all">All events</option>` + gateOptions(g => !g.cc);
   sel.value = [...sel.options].some(o => o.value === want) ? want : 'all';
 }
 $('#ccCh').addEventListener('change', () => { const s = cur(); if (s) $('#ccH').value = pulseFor(s, $('#ccCh').value); });
@@ -2010,10 +2116,13 @@ function updateCellCycle(){
   const cc = state.cc; if (!cc) return;
   if (cc.singId != null && !gateById(cc.singId)) cc.singId = null;
   if (cc.parent !== 'all' && !gateById(cc.parent)) cc.parent = 'all';
-  const s = cur();
-  cc.fit = cc.ch in s.idx ? ccFitFor(s) : {ok: false, why: `This sample has no ${cc.ch} channel.`};
-  cc.compare = state.samples.map(x => ({x, f: x === s ? cc.fit : ccFitFor(x)})).filter(r => r.f?.ok);
-  computeMasks(s);
+  const C = state.comp, key = JSON.stringify([state.gates, C.on, C.S, C.chs, cc.ch, cc.hch, cc.parent, cc.singId]);
+  if (cc.key !== key || !cc.fits){ cc.key = key; cc.fits = new Map(); }
+  const s = cur(), fitOf = x => { if (!cc.fits.has(x)) cc.fits.set(x, ccFitFor(x)); return cc.fits.get(x); };
+  cc.fit = cc.ch in s.idx ? fitOf(s) : {ok: false, why: `This sample has no ${cc.ch} channel.`};
+  let touched = false;
+  cc.compare = state.samples.map(x => { if (!cc.fits.has(x) && x !== s) touched = true; return {x, f: x === s ? cc.fit : fitOf(x)}; }).filter(r => r.f?.ok);
+  if (touched) computeMasks(s);
 }
 const pc = (a, b) => b ? (100 * a / b).toFixed(1) + '%' : '—';
 function renderCellCycle(){
@@ -2118,7 +2227,7 @@ addPanel({pop: 'all'}); addPanel({pop: 'all'});
   state.comp.chs = candidates(state.samples[0]);
   state.comp.pop = 1;
   state.cur = 0;
-  autoAssign();
+  detectControls();
   setCurrent(0);
   resetHistory();
 })();

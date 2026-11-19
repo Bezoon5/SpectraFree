@@ -125,6 +125,48 @@ try {
   check('Redo re-applies both steps', await page.evaluate(n => panels.length === n + 1 && !state.gates.some(g => g.name === 'FL1+'), before.plots));
   await page.close();
 
+  // ---------- quadrant gates
+  page = await freshPage();
+  const quad = await page.evaluate(() => {
+    deleteGate(2); deleteGate(3);
+    const B = panels[1], s = cur();
+    B.addQuadrant(B.sx.fwd(2e4), B.sy.fwd(1e4));
+    const qs = () => state.gates.filter(g => g.quad);
+    const sum = () => qs().reduce((a, g) => a + s.counts.get(g.id), 0);
+    const out = {n: qs().length, names: qs().map(g => g.name), sumOk: sum() === s.counts.get(1)};
+    const q2 = qs().find(g => g.quad.q === 2), before = s.counts.get(q2.id);
+    setQuadCentre(q2.quad.group, 2e5, 1e4); refresh();
+    out.moved = s.counts.get(q2.id) !== before && qs().every(g => g.qc[0] === 2e5);
+    out.sumAfterMove = sum() === s.counts.get(1);
+    deleteGate(qs().find(g => g.quad.q === 3).id);
+    out.groupDeleted = qs().length === 0;
+    undo(); out.undone = qs().length === 4;
+    return out;
+  });
+  check('quadrant makes four gates', quad.n === 4, quad.names.join(', '));
+  check('quadrants add up to the parent', quad.sumOk);
+  check('moving the centre moves all four together', quad.moved);
+  check('quadrants still add up after moving', quad.sumAfterMove);
+  check('deleting one quadrant deletes the group', quad.groupDeleted);
+  check('Undo restores the quadrant', quad.undone);
+
+  // ---------- medians and biexponential axes
+  const misc = await page.evaluate(() => {
+    let bad = 0;
+    for (let t = 0; t < 300; t++){
+      const n = 1 + Math.floor(Math.random() * 400), a = new Float32Array(n);
+      for (let i = 0; i < n; i++) a[i] = t % 3 ? Math.random() * 1e6 - 2e5 : Math.floor(Math.random() * 6);
+      const srt = Float32Array.from(a).sort(), ref = n % 2 ? srt[(n - 1) / 2] : (srt[n / 2 - 1] + srt[n / 2]) / 2;
+      if (Math.abs(statsFor({n}, new Uint8Array(n).fill(1), a).med - ref) > 1e-6 * Math.max(1, Math.abs(ref))) bad++;
+    }
+    const sc = makeScale('asinh', {range: 16777216, pneg: -400, plo: 50, min: -2000, max: 1e6});
+    return {bad, cf: sc.cf, ticksSorted: ticks(sc).every((t, i, a) => !i || a[i - 1].u <= t.u)};
+  });
+  check('fast median matches a full sort (300 random arrays)', misc.bad === 0, `${misc.bad} mismatches`);
+  check('biexponential linear zone follows the data below zero', misc.cf === 400, `cofactor ${misc.cf}`);
+  check('biexponential ticks are in order', misc.ticksSorted);
+  await page.close();
+
   check('no JavaScript errors', errors.length === 0, errors.slice(0, 3).join(' | '));
 } finally {
   await browser.close();
