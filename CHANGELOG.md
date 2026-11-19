@@ -2,6 +2,21 @@
 
 All notable changes to SpectraFree are recorded here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/).
 
+## [1.5.0] - 2026-11-19
+
+### Performance (1M events, 40 parameters)
+- Compensation is lazy and sparse: compensated channels are worked out when first read, from the non-zero terms of the inverse matrix only. Compensating the plotted channels: 2.7–3.4 s → 0.06–0.08 s.
+- Gates are recalculated incrementally: moving a gate updates it and the gates inside it only (0.25–0.3 s → 0.02–0.07 s), so live updates while dragging now work on large files.
+- Faster gate tests: bounds test for rectangles and quadrants; a 256 × 256 grid for polygons, exact against a brute-force check on 30 million points.
+- Faster scale transforms (biexponential about twice as fast).
+- FCS files are parsed in a background worker (falls back to the page when workers are unavailable).
+- Opening files no longer freezes the page during control-tube detection: the "cells only" mask is cached per tube, its saturation check runs one pass per channel, and detection waits until the first plots appear. Opening two 1M × 40 files: 12.8 s (frozen 11 s) → 1.9 s (longest freeze 0.4 s).
+
+### Added
+- Memory budget: tubes opened from files that are not in use are unloaded when memory runs short, and read again from the file when needed (switching tubes, overlays, exports, reports, compensation controls, cell-cycle comparison).
+- `npm run bench`: a 1-million-event benchmark at 10, 20 and 40 parameters, which can also time another build for comparison.
+- Smoke checks for lazy compensation, incremental gates, background parsing and unloading.
+
 ## [1.4.2] - 2026-11-19
 
 ### Changed

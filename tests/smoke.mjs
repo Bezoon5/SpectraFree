@@ -319,6 +319,58 @@ try {
   check('switching back to the 4-colour example works', tc.back);
   await page.close();
 
+  // ---------- 1.5: large-data engine (lazy compensation, incremental gates, worker parsing, unloading tubes)
+  page = await freshPage();
+  const eng = await page.evaluate(async () => {
+    const o = {};
+    loadExampleSet('tcell');
+    const s = cur(), C = state.comp, names = C.chs.filter(n => n in s.idx);
+    // lazy, sparse compensation equals the full matrix product
+    const Mi = invert(names.map(a => names.map(b => sp(a, b)))); let worst = 0;
+    names.forEach((nm, j) => {
+      const col = s.cols[s.idx[nm]];
+      for (let e = 0; e < s.n; e += 97){ let t = 0; names.forEach((a, i) => { t += s.raw[s.idx[a]][e] * Mi[i][j]; }); worst = Math.max(worst, Math.abs(col[e] - t)); }
+    });
+    o.compErr = worst;
+    // channels are compensated only when read
+    C.S['FITC-A|PE-A'] = 0.151; s.compKey = null; applyComp(s);
+    o.lazy = !!Object.getOwnPropertyDescriptor(s.cols, s.idx['APC-A']).get;
+    // moving one gate recalculates it and the gates inside it only, with the same counts as starting from scratch
+    computeMasks(s);
+    const g = state.gates.find(x => x.name === 'CD8+'); g.pts = g.pts.map(([x, y]) => [x, y * 1.2]);
+    computeMasks(s); o.recomputed = s.lastRecomputed;
+    const inc = JSON.stringify([...s.counts]); s.maskSig = null; computeMasks(s); o.sameCounts = inc === JSON.stringify([...s.counts]);
+    // background parsing gives the same numbers as parsing on the page
+    const bytes = buildFCS([{name: 'FSC-A', label: '', range: 1e3}, {name: 'FL1-A', label: 'CD4', range: 1e3}], [Float32Array.from([1, 2, 3.5]), Float32Array.from([4, -5, 6])], []);
+    const core = await parseBuffer(bytes.buffer.slice(0));
+    o.workerSame = JSON.stringify([...core.cols[1]]) === JSON.stringify([...parseFCS(bytes.buffer.slice(0), 'x').raw[1]]);
+    o.workerUsed = !!parseWorker;
+    // unloading: with a tiny memory budget, opened files leave memory and come back when needed, with the same results
+    const files = [0, 1, 2].map(k => { const n = 20000, a = new Float32Array(n), b = new Float32Array(n);
+      for (let i = 0; i < n; i++){ a[i] = 1000 + ((i * 7919 + k * 13) % 5000); b[i] = (i * 104729 + k) % 3000; }
+      return new File([buildFCS([{name: 'FSC-A', label: '', range: 1e4}, {name: 'FL1-A', label: '', range: 1e4}], [a, b], [])], `tube${k}.fcs`); });
+    mem.budget = 1;
+    await loadFiles(files);
+    state.gates = [{id: 1, name: 'R', parent: null, type: 'poly', shape: 'rect', xch: 'FSC-A', ych: 'FL1-A', xs: 'lin', ys: 'lin', pts: [[2000, 500], [5000, 500], [5000, 2500], [2000, 2500]]}];
+    refresh();
+    const first = cur(), firstCount = popCount(first, 1);
+    o.unloaded = state.samples.filter(x => !x.raw).length;
+    await setCurrent(2); o.reloaded = !!cur().raw && cur().name === 'tube2.fcs';
+    await setCurrent(0); o.sameAfterReload = popCount(cur(), 1) === firstCount;
+    o.stillUnloaded = state.samples.filter(x => !x.raw).length >= 1;
+    return o;
+  });
+  check('lazy sparse compensation matches the full calculation (within 0.01 on a 262,144 scale)', eng.compErr < 0.01, eng.compErr.toExponential(1) + ' largest difference');
+  check('compensated channels are only worked out when read', eng.lazy);
+  check('moving a gate recalculates only it and the gates inside it', eng.recomputed === 1 + 8, `${eng.recomputed} gates`);
+  check('incremental gate counts equal counts from scratch', eng.sameCounts);
+  check('files parsed in the background give the same numbers', eng.workerSame);
+  check('background parsing worker is used', eng.workerUsed);
+  check('over the memory budget, idle tubes are unloaded', eng.unloaded >= 1, `${eng.unloaded} unloaded`);
+  check('an unloaded tube is read again when opened', eng.reloaded);
+  check('results are the same after a tube is read again', eng.sameAfterReload);
+  await page.close();
+
   check('no JavaScript errors', errors.length === 0, errors.slice(0, 3).join(' | '));
 } finally {
   await browser.close();

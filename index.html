@@ -552,7 +552,8 @@ function parseText(t){
   return kw;
 }
 
-function parseFCS(buf, name){
+// Pure parser: no page state, so it can run in a background worker. Returns plain channel objects and Float32 columns.
+function parseFCSCore(buf){
   const u8 = new Uint8Array(buf), dv = new DataView(buf);
   const asc = (a, b) => { let s = ''; for (let i = a; i < b && i < u8.length; i++) s += String.fromCharCode(u8[i]); return s; };
   const ver = asc(0, 6);
@@ -582,10 +583,7 @@ function parseFCS(buf, name){
     const bytes = dt === 'F' ? 4 : dt === 'D' ? 8 : B / 8;
     if (dt === 'I' && ![8,16,32].includes(B)) throw new Error(`parameter ${N} uses ${B}-bit integers, which this viewer does not read.`);
     readers.push({bytes, R, E, G, mask: dt === 'I' && R > 0 && Number.isInteger(Math.log2(R)) && R < 2 ** B});
-    const cobj = {name: N, stain: S, range: R};
-    // label follows the user's own name for the channel when there is one (Channel names), else the file's $PnS
-    Object.defineProperty(cobj, 'label', {enumerable: true, get(){ const t = state.labels?.[this.name] || this.stain; return t && t !== this.name ? `${this.name} · ${t}` : this.name; }});
-    ch.push(cobj);
+    ch.push({name: N, stain: S, range: R});
     bpe += bytes;
   }
   if (!(dS > 0) || !(dE >= dS)) throw new Error('the file does not say where its data starts and ends.');
@@ -617,9 +615,91 @@ function parseFCS(buf, name){
     c.isTime = /^time$/i.test(c.name);
     c.isScatter = /^(FSC|SSC)/i.test(c.name);
   });
+  return {kw, ver, n, ch, cols, moreData: +(kw['$NEXTDATA'] || 0) > 0};
+}
+const STAT_KEYS = ['min', 'max', 'plo', 'phi', 'pneg'];
+const statsOf = c => Object.fromEntries(STAT_KEYS.map(k => [k, c[k]]));
+// Turns parsed data into a sample: channel labels, index by name, spillover from the file
+function sampleFrom(core, name){
+  const {kw, ver, n, ch, cols} = core;
+  for (const c of ch){
+    // label follows the user's own name for the channel when there is one (Channel names), else the file's $PnS
+    Object.defineProperty(c, 'label', {enumerable: true, get(){ const t = state.labels?.[this.name] || this.stain; return t && t !== this.name ? `${this.name} · ${t}` : this.name; }});
+    c.rawStat = statsOf(c);
+  }
   const idx = {}; ch.forEach((c, i) => { if (!(c.name in idx)) idx[c.name] = i; });
-  return {name, kw, ver, n, ch, cols: cols.slice(), raw: cols, idx, ucache: new Map(), example: false, spill: parseSpill(kw, ch),
-    moreData: +(kw['$NEXTDATA'] || 0) > 0};
+  return {name, kw, ver, n, ch, cols: cols.slice(), raw: cols, idx, ucache: new Map(), example: false, spill: parseSpill(kw, ch), moreData: core.moreData};
+}
+function parseFCS(buf, name){ return sampleFrom(parseFCSCore(buf), name); }
+
+/* ---------------- Background parsing and memory ---------------- */
+// FCS files are parsed in a worker so the page stays responsive; if workers are unavailable, on the page itself.
+let parseWorker = null, workerReady = null, jobId = 0;
+const parseJobs = new Map();
+function startWorker(){
+  if (workerReady) return workerReady;
+  workerReady = new Promise(resolve => {
+    try {
+      const src = [parseText, chStats, parseFCSCore].map(f => f.toString()).join('\n') +
+        `\nonmessage = e => { if (e.data === 'ping'){ postMessage('pong'); return; }
+          try { const r = parseFCSCore(e.data.buf); postMessage({id: e.data.id, r}, r.cols.map(c => c.buffer)); }
+          catch (err){ postMessage({id: e.data.id, err: err.message}); } };`;
+      const url = URL.createObjectURL(new Blob([src], {type: 'text/javascript'}));
+      const w = new Worker(url);
+      const fail = () => { try { w.terminate(); } catch (e){} resolve(false); };
+      const timer = setTimeout(fail, 2000);
+      w.onerror = e => { e.preventDefault?.(); clearTimeout(timer); fail(); };
+      w.onmessage = e => {
+        if (e.data === 'pong'){ clearTimeout(timer); parseWorker = w; w.onmessage = done; w.onerror = null; resolve(true); }
+      };
+      const done = e => { const j = parseJobs.get(e.data.id); if (!j) return; parseJobs.delete(e.data.id); e.data.err ? j.reject(new Error(e.data.err)) : j.resolve(e.data.r); };
+      w.postMessage('ping');
+    } catch (e){ resolve(false); }
+  });
+  return workerReady;
+}
+async function parseBuffer(buf){
+  if (await startWorker()) return new Promise((resolve, reject) => { const id = ++jobId; parseJobs.set(id, {resolve, reject}); parseWorker.postMessage({id, buf}, [buf]); });
+  return parseFCSCore(buf);
+}
+// Only the tubes in use stay in memory. Others (opened from files) are unloaded and read again from the file when needed.
+const mem = {budget: Math.min(2.5e9, Math.max(6e8, (navigator.deviceMemory || 4) * 2.5e8)), hold: new Set()};
+const sampleBytes = s => s.raw ? s.n * s.ch.length * 8 : 0; // raw + compensated copies and display caches, roughly
+const touch = s => { if (s) s.used = performance.now(); };
+const overlaySamples = () => panels.flatMap(p => p.overlay || []).map(n => state.samples.find(x => x.name === n)).filter(Boolean);
+function enforceBudget(keep = []){
+  let total = state.samples.reduce((a, x) => a + sampleBytes(x), 0);
+  if (total <= mem.budget) return;
+  const pinned = new Set([cur(), ...keep, ...overlaySamples(), ...mem.hold]);
+  const lru = state.samples.filter(x => x.raw && x.file && !pinned.has(x)).sort((a, b) => (a.used || 0) - (b.used || 0));
+  for (const x of lru){ if (total <= mem.budget) break; total -= sampleBytes(x); evictSample(x); }
+}
+// brightness of each fluorescence channel in the cells, kept so control-tube detection works on unloaded tubes
+function ensureSummary(s){
+  if (s.p95 || !s.raw) return;
+  const names = candidates(s), m = autoCellMask(s, names), st = Math.max(1, Math.floor(s.n / 20000)); s.p95 = {};
+  for (const n of names){ const X = s.raw[s.idx[n]], a = []; for (let i = 0; i < s.n; i += st) if (m[i]) a.push(X[i]); s.p95[n] = Math.max(1, pct(a, .95)); }
+}
+function evictSample(s){
+  ensureSummary(s);
+  for (const c of s.ch){ Object.assign(c, c.rawStat); c.stale = false; }
+  Object.assign(s, {raw: null, cols: null, ucache: new Map(), masks: null, counts: null, maskSig: null, maskKey: null, compKey: null, root: null, cellMask: null});
+}
+const loading = new Map();
+function loadSample(s){
+  if (s.raw) return Promise.resolve(s);
+  if (loading.has(s)) return loading.get(s);
+  const job = (async () => {
+    try {
+      const core = await parseBuffer(await s.file.arrayBuffer());
+      core.ch.forEach((c, p) => { Object.assign(s.ch[p], statsOf(c)); s.ch[p].rawStat = statsOf(c); });
+      Object.assign(s, {raw: core.cols, cols: core.cols.slice(), ucache: new Map(), compKey: null, maskKey: null, maskSig: null, masks: null, root: null});
+      touch(s); enforceBudget([s]);
+      return s;
+    } finally { loading.delete(s); }
+  })();
+  loading.set(s, job);
+  return job;
 }
 function chStats(c, a, n){
   let mn = Infinity, mx = -Infinity;
@@ -655,21 +735,22 @@ function defaultScale(c){
   return c.isScatter ? 'lin' : 'asinh';
 }
 function makeScale(type, c){
+  if (c.stale && c.ensure) c.ensure(); // a compensated channel's statistics are known once it has been worked out
   const R = c.range;
   if (type === 'log'){
     let lo = R >= 1e6 ? 10 : 1;
     if (c.plo > 0) lo = Math.min(Math.max(lo, 10 ** Math.floor(Math.log10(c.plo))), R / 1000);
     const a = Math.log10(lo), b = Math.log10(R), k = b - a;
-    return {type, lo, hi: R, fwd: v => v > 0 ? (Math.log10(v) - a) / k : -1, inv: u => Math.pow(10, a + u * k), a, b};
+    return {type, lo, hi: R, fwd: v => v > 0 ? (Math.log10(v) - a) / k : -1, inv: u => Math.pow(10, a + u * k), a, b, k};
   }
   if (type === 'asinh'){
     // linear zone sized from the data: the spread below zero (e.g. after compensation), else the dimmest positive events
     const cf = c.pneg < 0 ? Math.max(-c.pneg, 1) : c.plo > 0 ? Math.max(c.plo, 1) : Math.max(R / 1750, 1), lo = -10 * cf, A = Math.asinh(lo / cf), B = Math.asinh(R / cf), k = B - A;
-    return {type, lo, hi: R, cf, fwd: v => (Math.asinh(v / cf) - A) / k, inv: u => cf * Math.sinh(A + u * k)};
+    return {type, lo, hi: R, cf, A, k, fwd: v => (Math.asinh(v / cf) - A) / k, inv: u => cf * Math.sinh(A + u * k)};
   }
   const hi = c.isTime ? Math.max(c.max, 1) : (c.phi > 0 ? Math.min(R, niceCeil(c.phi * 1.25)) : R);
   const lo = Math.min(0, Math.max(c.min, -0.05 * hi)), k = hi - lo;
-  return {type: 'lin', lo, hi, fwd: v => (v - lo) / k, inv: u => lo + u * k};
+  return {type: 'lin', lo, hi, k, fwd: v => (v - lo) / k, inv: u => lo + u * k};
 }
 // a gate edge drawn on the plot border extends to infinity, so events pushed off-scale (e.g. by compensation) stay inside
 const EDGE = 1e30;
@@ -742,8 +823,11 @@ const hist = {undo: [], redo: [], cur: null, sig: '', busy: 0};
 
 function getU(s, ci, type){
   const key = ci + '|' + type; let a = s.ucache.get(key); if (a) return a;
-  const sc = makeScale(type, s.ch[ci]), X = s.cols[ci]; a = new Float32Array(s.n);
-  for (let i = 0; i < s.n; i++){ const u = sc.fwd(X[i]); a[i] = u > 0 ? (u < 1 ? u : 1) : 0; }
+  const sc = makeScale(type, s.ch[ci]), X = s.cols[ci], n = s.n; a = new Float32Array(n);
+  // the transform written out per scale (same arithmetic as sc.fwd, without a function call per event)
+  if (sc.type === 'asinh'){ const {cf, A, k} = sc; for (let i = 0; i < n; i++){ const u = (Math.asinh(X[i] / cf) - A) / k; a[i] = u > 0 ? (u < 1 ? u : 1) : 0; } }
+  else if (sc.type === 'log'){ const {a: la, k} = sc; for (let i = 0; i < n; i++){ const v = X[i], u = v > 0 ? (Math.log10(v) - la) / k : -1; a[i] = u > 0 ? (u < 1 ? u : 1) : 0; } }
+  else { const {lo, k} = sc; for (let i = 0; i < n; i++){ const u = (X[i] - lo) / k; a[i] = u > 0 ? (u < 1 ? u : 1) : 0; } }
   s.ucache.set(key, a); return a;
 }
 function rootMask(s){ return s.root || (s.root = new Uint8Array(s.n).fill(1)); }
@@ -762,31 +846,62 @@ function gateMask(s, g, parent){
   const sy = makeScale(g.ys, s.ch[yi]), V = getU(s, yi, g.ys);
   const vx = g.pts.map(p => cu(sx.fwd(p[0]))), vy = g.pts.map(p => cu(sy.fwd(p[1]))), m = vx.length;
   const x0 = Math.min(...vx), x1 = Math.max(...vx), y0 = Math.min(...vy), y1 = Math.max(...vy);
-  for (let i = 0; i < s.n; i++){
-    if (!parent[i]) continue;
-    const x = U[i], y = V[i];
-    if (x < x0 || x > x1 || y < y0 || y > y1) continue;
+  // rectangles and quadrants (four corners, edges along the axes) only need a bounds test
+  if (m === 4 && new Set(vx).size === 2 && new Set(vy).size === 2){
+    for (let i = 0; i < s.n; i++){ if (!parent[i]) continue; const x = U[i], y = V[i]; if (x >= x0 && x <= x1 && y >= y0 && y <= y1) out[i] = 1; }
+    return out;
+  }
+  const inside = (x, y) => {
     let c = false;
     for (let a = 0, b = m - 1; a < m; b = a++){
       if ((vy[a] > y) !== (vy[b] > y) && x < (vx[b] - vx[a]) * (y - vy[a]) / (vy[b] - vy[a]) + vx[a]) c = !c;
     }
-    if (c) out[i] = 1;
+    return c;
+  };
+  // A 256 × 256 grid over the gate: cells no edge passes through are wholly inside or outside, so only events
+  // in cells an edge crosses need the exact test. Edges are traced at quarter-cell steps and marked with their
+  // neighbouring cells, so every crossed cell is caught.
+  const GN = 256, gw = (x1 - x0) / GN || 1e-9, gh = (y1 - y0) / GN || 1e-9, grid = new Uint8Array(GN * GN); // 0 outside, 1 inside, 2 edge
+  const cx = x => Math.min(GN - 1, Math.max(0, ((x - x0) / gw) | 0)), cy = y => Math.min(GN - 1, Math.max(0, ((y - y0) / gh) | 0));
+  for (let a = 0, b = m - 1; a < m; b = a++){
+    const steps = Math.ceil(4 * Math.max(Math.abs(vx[a] - vx[b]) / gw, Math.abs(vy[a] - vy[b]) / gh)) + 1;
+    for (let t = 0; t <= steps; t++){
+      const X = cx(vx[b] + (vx[a] - vx[b]) * t / steps), Y = cy(vy[b] + (vy[a] - vy[b]) * t / steps);
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++){ const xx = X + dx, yy = Y + dy; if (xx >= 0 && xx < GN && yy >= 0 && yy < GN) grid[yy * GN + xx] = 2; }
+    }
+  }
+  for (let j = 0; j < GN; j++) for (let i = 0; i < GN; i++){ const q = j * GN + i; if (!grid[q] && inside(x0 + (i + .5) * gw, y0 + (j + .5) * gh)) grid[q] = 1; }
+  for (let i = 0; i < s.n; i++){
+    if (!parent[i]) continue;
+    const x = U[i], y = V[i];
+    if (x < x0 || x > x1 || y < y0 || y > y1) continue;
+    const k = grid[cy(y) * GN + cx(x)];
+    if (k === 1 || (k === 2 && inside(x, y))) out[i] = 1;
   }
   return out;
 }
 const maskKey = () => compKey() + '#' + JSON.stringify(state.gates);
 // masks for a sample that may not be on screen (overlays, reports, absolute counts)
-function masksFor(s){ applyComp(s); if (s.maskKey !== maskKey()) computeMasks(s); return s; }
+function masksFor(s){ if (!s.raw) return s; applyComp(s); if (s.maskKey !== maskKey()) computeMasks(s); return s; }
+// short hash for gate signatures
+const hashStr = t => { let h = 0x811c9dc5; for (let i = 0; i < t.length; i++){ h ^= t.charCodeAt(i); h = Math.imul(h, 0x01000193); } return (h >>> 0).toString(36); };
+// Gates are recalculated only when they, or a gate they sit inside, changed (or compensation changed).
 function computeMasks(s){
-  if (!s) return;
+  if (!s || !s.raw) return;
   s.maskKey = maskKey();
-  s.masks = new Map(); s.counts = new Map();
+  const ck = compKey();
+  let oldM = s.masks, oldC = s.counts, oldSig = s.maskSig;
+  if (s.maskCk !== ck || !oldSig){ oldM = null; oldC = null; oldSig = new Map(); }
+  s.maskCk = ck; s.masks = new Map(); s.counts = new Map(); s.maskSig = new Map(); s.lastRecomputed = 0;
   const root = rootMask(s); s.counts.set('all', s.n);
   for (const g of state.gates){
+    const sig = hashStr((g.parent == null ? 'root' : (s.maskSig.get(g.parent) || 'none')) + JSON.stringify([g.type, g.xch, g.ych, g.xs, g.ys, g.pts]));
+    s.maskSig.set(g.id, sig);
+    if (oldSig.get(g.id) === sig && oldM?.has(g.id)){ s.masks.set(g.id, oldM.get(g.id)); s.counts.set(g.id, oldC.get(g.id)); continue; }
     const parent = g.parent == null ? root : s.masks.get(g.parent);
     const m = gateMask(s, g, parent || new Uint8Array(s.n));
     let c = 0; for (let i = 0; i < s.n; i++) c += m[i];
-    s.masks.set(g.id, m); s.counts.set(g.id, c);
+    s.masks.set(g.id, m); s.counts.set(g.id, c); s.lastRecomputed++;
   }
 }
 const popMask = (s, id) => id === 'all' ? rootMask(s) : (s.masks?.get(id) || new Uint8Array(s.n));
@@ -1044,7 +1159,8 @@ class Panel {
       // other samples are put on this plot's axis through their raw values, since each sample's own scale can differ
       const binOther = (s2) => {
         const bins = new Float64Array(NB), i2 = s2.idx[this.xn]; if (i2 === undefined) return null;
-        masksFor(s2); const m = popMask(s2, this.pop), X = s2.cols[i2];
+        if (!s2.raw){ loadSample(s2).then(() => this.draw(), () => {}); return null; }
+        touch(s2); masksFor(s2); const m = popMask(s2, this.pop), X = s2.cols[i2];
         for (let i = 0; i < s2.n; i++){
           if (!m[i]) continue;
           let u = sx.fwd(X[i]);
@@ -1801,7 +1917,9 @@ function liveRefresh(){
   if (liveRaf) return;
   liveRaf = requestAnimationFrame(() => {
     liveRaf = 0; const s = cur(); if (!s) return;
-    if (s.n * Math.max(1, state.gates.length) <= 3e6){ computeMasks(s); panels.forEach(p => p.draw()); }
+    // only the gate being moved and the gates inside it are recalculated, so this stays live on large files
+    const sub = state.sel != null ? 1 + treeOrder().filter(({g}) => { for (let q = g.parent; q != null; q = gateById(q)?.parent) if (q === state.sel) return true; return false; }).length : state.gates.length;
+    if (s.n * Math.max(1, sub) <= 2.5e7){ computeMasks(s); panels.forEach(p => p.draw()); }
     else drawAllOverlays();
   });
 }
@@ -1818,9 +1936,16 @@ function refresh(){
   markChange();
 }
 function setCurrent(i){
+  const target = state.samples[i];
+  if (target && !target.raw){
+    toast(`Reading ${target.name}…`);
+    return loadSample(target).then(() => setCurrent(i), err => showMsg(`Couldn't read ${target.name} again: ${err.message}. Open the file again.`, false));
+  }
+  touch(target);
   hist.busy++;
   try { setCurrentInner(i); } finally { hist.busy--; }
   if (hist.cur){ hist.cur = snapshot(); hist.sig = snapSig(hist.cur); }
+  enforceBudget();
 }
 function setCurrentInner(i){
   state.cur = i; const s = cur();
@@ -2012,9 +2137,13 @@ function compKey(){
   return C.on ? JSON.stringify([C.chs, C.chs.map(a => C.chs.map(b => sp(a, b)))]) : 'off';
 }
 // observed = true × S  (rows = dye, columns = detector), so true = observed × S⁻¹
+// Compensated channels are worked out only when something reads them (a plot, a gate, a statistic),
+// and each uses only the non-zero terms of the inverse matrix, so a 40-colour panel costs little until you look at it.
 function applyComp(s){
+  if (!s.raw) return true; // unloaded: done when it is read again
   const key = compKey(); if (s.compKey === key) return s.compOk !== false;
   s.cols = s.raw.slice(); s.ucache = new Map(); s.compChs = new Set();
+  for (const c of s.ch){ if (c.rawStat) Object.assign(c, c.rawStat); c.stale = false; }
   let ok = true;
   if (state.comp.on){
     const names = state.comp.chs.filter(n => n in s.idx);
@@ -2022,16 +2151,26 @@ function applyComp(s){
       const Mi = invert(names.map(a => names.map(b => sp(a, b))));
       if (!Mi) ok = false;
       else {
-        const ci = names.map(n => s.idx[n]), k = ci.length, src = ci.map(i => s.raw[i]), out = ci.map(() => new Float32Array(s.n)), o = new Float64Array(k);
-        for (let e = 0; e < s.n; e++){
-          for (let a = 0; a < k; a++) o[a] = src[a][e];
-          for (let j = 0; j < k; j++){ let t = 0; for (let i = 0; i < k; i++) t += o[i] * Mi[i][j]; out[j][e] = t; }
-        }
-        ci.forEach((p, j) => { s.cols[p] = out[j]; s.compChs.add(s.ch[p].name); });
+        const ci = names.map(n => s.idx[n]), cols = s.cols, raw = s.raw, n = s.n;
+        ci.forEach((p, j) => {
+          const terms = []; ci.forEach((q, i) => { const w = Mi[i][j]; if (Math.abs(w) > 1e-9) terms.push([raw[q], w]); });
+          const c = s.ch[p];
+          const make = () => {
+            const acc = new Float64Array(n), [src0, w0] = terms[0];
+            for (let e = 0; e < n; e++) acc[e] = src0[e] * w0;
+            for (let t = 1; t < terms.length; t++){ const [src, w] = terms[t]; for (let e = 0; e < n; e++) acc[e] += src[e] * w; }
+            const out = Float32Array.from(acc);
+            Object.defineProperty(cols, p, {value: out, writable: true, configurable: true, enumerable: true});
+            c.stale = false; chStats(c, out, n);
+            return out;
+          };
+          Object.defineProperty(cols, p, {get: make, configurable: true, enumerable: true});
+          c.stale = true; c.ensure = () => cols[p];
+          s.compChs.add(c.name);
+        });
       }
     }
   }
-  s.ch.forEach((c, p) => chStats(c, s.cols[p], s.n));
   s.compKey = key; s.compOk = ok; return ok;
 }
 function compStatus(ok){
@@ -2073,7 +2212,15 @@ function fillCompPop(){
   if (C.pop !== 'all' && C.pop !== 'auto' && !gateById(C.pop)) C.pop = 'auto';
   sel.value = String(C.pop);
 }
+// Control tubes that were unloaded to save memory are read again first (then the result arrives as a promise).
 function calcFromControls(opts = {}){
+  const C = state.comp, need = [C.unst, ...Object.values(C.ctrl)].filter(x => x && state.samples.includes(x));
+  if (need.every(x => x.raw)) return calcFromControlsNow(opts);
+  toast('Reading the control tubes…');
+  need.forEach(x => mem.hold.add(x));
+  return (async () => { try { for (const x of need) await loadSample(x); return calcFromControlsNow(opts); } finally { mem.hold.clear(); enforceBudget(); } })();
+}
+function calcFromControlsNow(opts = {}){
   const C = state.comp, s0 = cur(); if (!s0) return;
   const names = C.chs.filter(n => n in s0.idx);
   const maskFor = s => { applyComp(s); computeMasks(s); return C.pop === 'auto' ? autoCellMask(s, names) : popMask(s, C.pop); };
@@ -2108,7 +2255,15 @@ function calcFromControls(opts = {}){
   showMsg((done.length ? `Calculated spillover for ${done.join(', ')} and turned compensation on.` : 'No spillover values were calculated.') + (errs.length ? ' Problems: ' + errs.join('; ') + '.' : ''), !errs.length);
 }
 // Otsu threshold on log10(FSC) splits debris from cells; saturated events are dropped too
+// cached per tube: control-tube detection asks for it once per channel
 function autoCellMask(s, names){
+  const key = (names || []).join('|');
+  if (s.cellMask?.key === key && s.cellMask.raw === s.raw) return s.cellMask.m;
+  const m = autoCellMaskNow(s, names);
+  s.cellMask = {key, raw: s.raw, m};
+  return m;
+}
+function autoCellMaskNow(s, names){
   const m = new Uint8Array(s.n).fill(1);
   const fi = s.idx['FSC-A'] ?? s.ch.findIndex(c => /^FSC/i.test(c.name));
   if (fi != null && fi >= 0){
@@ -2131,7 +2286,7 @@ function autoCellMask(s, names){
     }
   }
   const sat = [...new Set([...(names || []), 'FSC-A', 'SSC-A'])].filter(n => n in s.idx).map(n => [s.raw[s.idx[n]], s.ch[s.idx[n]].range * 0.995]);
-  for (let i = 0; i < s.n; i++) if (m[i]) for (const [X, lim] of sat) if (X[i] >= lim){ m[i] = 0; break; }
+  for (const [X, lim] of sat) for (let i = 0; i < s.n; i++) if (X[i] >= lim) m[i] = 0; // one pass per channel
   return m;
 }
 // Finds the unstained tube and one single-stain tube per channel. File names win; otherwise brightness.
@@ -2141,7 +2296,7 @@ function detectControls(){
   const report = [];
   if (ss.length < 2 || names.length < 2) return report;
   const p95c = new Map();
-  const p95 = (x, n) => { const k = x.name + '|' + n; if (p95c.has(k)) return p95c.get(k); const m = autoCellMask(x, names), X = x.raw[x.idx[n]], a = []; const st = Math.max(1, Math.floor(x.n / 20000)); for (let i = 0; i < x.n; i += st) if (m[i]) a.push(X[i]); const v = Math.max(1, pct(a, .95)); p95c.set(k, v); return v; };
+  const p95 = (x, n) => { const k = x.name + '|' + n; if (p95c.has(k)) return p95c.get(k); if (!x.raw) return Math.max(1, x.p95?.[n] ?? 1); const m = autoCellMask(x, names), X = x.raw[x.idx[n]], a = []; const st = Math.max(1, Math.floor(x.n / 20000)); for (let i = 0; i < x.n; i += st) if (m[i]) a.push(X[i]); const v = Math.max(1, pct(a, .95)); p95c.set(k, v); return v; };
   const byName = ss.find(x => /unstain|unlabel|blank|\bunst\b|\bneg(ative)?\b|\bno ?ab\b/i.test(x.name));
   const U = byName || ss.reduce((best, x) => { const t = names.reduce((a, n) => a + Math.log10(p95(x, n)), 0); return !best || t < best.t ? {x, t} : best; }, null).x;
   C.unst = U; C.ctrl = {};
@@ -2177,13 +2332,13 @@ function showAutoReport(report, result){
   }).join('') + `</ul>`;
   el.hidden = false;
 }
-$('#autoCompBtn').addEventListener('click', () => {
+$('#autoCompBtn').addEventListener('click', async () => {
   const s0 = cur(); if (!s0) return;
   if (state.comp.chs.filter(n => n in s0.idx).length < 2){ showMsg('Tick at least two channels under "Channels to compensate" first.', false); return; }
   const report = detectControls();
   const found = report.filter(r => r.ch !== 'Unstained' && r.x).length;
   if (!found){ renderComp(); showAutoReport(report); showMsg('Auto-compensate found no single-stain control tubes. Load an unstained tube and one tube per dye, each stained with that dye alone.', false); return; }
-  const res = calcFromControls({silent: true});
+  const res = await calcFromControls({silent: true});
   showAutoReport(report, res);
   showMsg(res.done.length ? `Auto-compensated ${res.done.length} channel${res.done.length > 1 ? 's' : ''} (${res.done.join(', ')}) and turned compensation on. Check the tubes it chose below.` + (res.errs.length ? ' Problems: ' + res.errs.join('; ') + '.' : '') : 'Auto-compensate could not calculate any spillover. ' + res.errs.join('; ') + '.', !res.errs.length && res.done.length > 0);
 });
@@ -2277,8 +2432,13 @@ function showMsg(text, ok){ const m = $('#msg'); $('#msgText').textContent = tex
 $('#msgClose').addEventListener('click', () => showMsg(''));
 async function loadFiles(files){
   const added = [], errs = [];
+  if (files.length) toast(`Reading ${files.length} file${files.length === 1 ? '' : 's'}…`);
   for (const f of files){
-    try { added.push(parseFCS(await f.arrayBuffer(), f.name)); }
+    try {
+      const smp = sampleFrom(await parseBuffer(await f.arrayBuffer()), f.name);
+      smp.file = f; touch(smp); added.push(smp);
+      state.samples.push(...added); enforceBudget([added[0]]); state.samples.length -= added.length; // count them; the first stays loaded
+    }
     catch(err){ errs.push(`${f.name}: ${err.message}`); }
   }
   const hadExamples = state.samples.some(s => s.example);
@@ -2294,6 +2454,8 @@ async function loadFiles(files){
       state.exampleSet = null;
     }
     const first = state.samples.length; state.samples.push(...added); setCurrent(first);
+    // control-tube detection reads every tube, so it runs just after the first plots appear
+    await new Promise(r => setTimeout(r, 0));
     detectControls(); renderComp();
     if (hadExamples) resetHistory(); else markChange();
   }
@@ -2681,13 +2843,26 @@ function ccFitFor(s){
   for (let i = 0; i < s.n; i++) if (m[i]) V.push(X[i]);
   return fitCellCycle(V);
 }
+// fits for unloaded tubes are done in the background, one tube at a time
+let fitChain = Promise.resolve();
+function queueFit(x, key){
+  fitChain = fitChain.then(async () => {
+    const cc = state.cc; if (!cc || cc.key !== key || cc.fits.has(x)) return;
+    await loadSample(x);
+    if (state.cc !== cc || cc.key !== key) return;
+    cc.fits.set(x, ccFitFor(x)); computeMasks(cur()); updateCellCycle(); renderCellCycle();
+  }).catch(() => {});
+}
 function updateCellCycle(){
   const cc = state.cc; if (!cc) return;
   if (cc.singId != null && !gateById(cc.singId)) cc.singId = null;
   if (cc.parent !== 'all' && !gateById(cc.parent)) cc.parent = 'all';
   const C = state.comp, key = JSON.stringify([state.gates, C.on, C.S, C.chs, cc.ch, cc.hch, cc.parent, cc.singId]);
   if (cc.key !== key || !cc.fits){ cc.key = key; cc.fits = new Map(); }
-  const s = cur(), fitOf = x => { if (!cc.fits.has(x)) cc.fits.set(x, ccFitFor(x)); return cc.fits.get(x); };
+  const s = cur(), fitOf = x => {
+    if (!cc.fits.has(x)){ if (!x.raw){ queueFit(x, cc.key); return null; } cc.fits.set(x, ccFitFor(x)); }
+    return cc.fits.get(x);
+  };
   cc.fit = cc.ch in s.idx ? fitOf(s) : {ok: false, why: `This sample has no ${cc.ch} channel.`};
   let touched = false;
   cc.compare = state.samples.map(x => { if (!cc.fits.has(x) && x !== s) touched = true; return {x, f: x === s ? cc.fit : fitOf(x)}; }).filter(r => r.f?.ok);
@@ -2875,7 +3050,7 @@ function exportEvents(fmt, popId = exportPop()){
   const m = popMask(s, popId), idx = [];
   for (let i = 0; i < s.n; i++) if (m[i]) idx.push(i);
   if (!idx.length){ toast(`There are no events in ${popName(popId)} in this sample.`); return; }
-  const chs = s.ch.map((c, p) => ({name: c.name, label: state.labels[c.name] || c.stain || '', range: Math.max(c.range, c.max), col: s.cols[p]}));
+  const chs = s.ch.map((c, p) => { const col = s.cols[p]; return {name: c.name, label: state.labels[c.name] || c.stain || '', range: Math.max(c.range, c.max), col}; });
   const comp = s.compChs?.size > 0, base = `${fileSafe(s.name)}_${fileSafe(popName(popId))}${comp ? '_comp' : ''}`;
   if (fmt === 'fcs'){
     const cols = chs.map(c => { const a = new Float32Array(idx.length); for (let k = 0; k < idx.length; k++) a[k] = c.col[idx[k]]; return a; });
@@ -2893,13 +3068,14 @@ function exportEvents(fmt, popId = exportPop()){
     saveFile(base + '.csv', new Blob(parts, {type: 'text/csv'}), 'text');
   }
 }
-function exportStats(){
+async function exportStats(){
   const s0 = cur(); if (!s0) return;
   const names = [...new Set(state.samples.flatMap(x => x.ch.filter(c => !c.isTime).map(c => c.name)))];
   const labelOf = n => chOf(s0, n)?.label || state.samples.map(x => chOf(x, n)).find(Boolean)?.label || n;
   const parts = ['﻿' + csvLine(['Sample', 'Population', 'Parent', 'Events', 'Volume (µL)', 'Events/µL', '% of parent', '% of total', 'Compensated', ...names.map(n => `Median ${labelOf(n)}`)])];
   const pops = [{id: 'all', name: 'All events', parent: null}, ...treeOrder().map(({g}) => ({id: g.id, name: g.name, parent: g.parent ?? 'all'}))];
   for (const x of state.samples){
+    if (!x.raw) await loadSample(x);
     applyComp(x); computeMasks(x); const vol = sampleVol(x);
     for (const p of pops){
       const m = popMask(x, p.id), c = popCount(x, p.id), pc = p.parent == null ? null : popCount(x, p.parent);
@@ -3060,7 +3236,7 @@ $('#wsFile').addEventListener('change', e => { const f = e.target.files[0]; e.ta
 
 
 /* ---------------- Batch reports: PDF and PowerPoint ---------------- */
-const APP_VERSION = '1.4.2';
+const APP_VERSION = '1.5.0';
 // One report page for the current sample: plots on the left, statistics on the right.
 // header=false leaves the title out (the PowerPoint slide has it as editable text instead).
 function composeReportPage(W, H, opts = {}){
@@ -3145,7 +3321,7 @@ async function forEachSampleReport(fn){
   hist.busy++;
   try {
     for (let i = 0; i < n; i++){
-      state.cur = i; const s = cur(); applyComp(s); computeMasks(s); updateCellCycle();
+      state.cur = i; const s = cur(); if (!s.raw) await loadSample(s); touch(s); applyComp(s); computeMasks(s); updateCellCycle();
       out.push(await fn(s, i, n));
       await new Promise(r => setTimeout(r, 0));
     }

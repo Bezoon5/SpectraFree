@@ -1,12 +1,13 @@
 {
   "name": "spectrafree",
-  "version": "1.4.2",
+  "version": "1.5.0",
   "description": "Open-source flow cytometry (FACS) analysis that runs in the browser: gating, compensation and cell-cycle analysis in one HTML file.",
   "private": true,
   "license": "GPL-3.0-or-later",
   "type": "module",
   "scripts": {
-    "test": "node tests/smoke.mjs"
+    "test": "node tests/smoke.mjs",
+    "bench": "node tests/bench.mjs"
   },
   "devDependencies": {
     "playwright": "1.63.0"

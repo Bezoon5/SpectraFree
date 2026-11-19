@@ -19,8 +19,11 @@ The tests drive the app in headless Chromium with [Playwright](https://playwrigh
 ```bash
 npm install
 npx playwright install chromium
-npm test
+npm test        # correctness checks
+npm run bench   # 1-million-event timings at 10, 20 and 40 parameters
 ```
+
+`node tests/bench.mjs path/to/old/index.html` times another build the same way, for before-and-after comparisons. Please include those numbers in pull requests that touch parsing, compensation, gating or drawing.
 
 `tests/smoke.mjs` checks:
 - file reading (float, 16-bit integer, log-amplified, FCS 2.0, escaped delimiters, rejection of bad files);
@@ -40,7 +43,8 @@ Everything is in `index.html`, in this order:
 | Section (search for the comment) | What it holds |
 |---|---|
 | `<style>` | Design tokens (light and dark), then component styles |
-| `FCS parsing` | `parseFCS`, `parseText`, `parseSpill`, `chStats` |
+| `FCS parsing` | `parseFCSCore` (pure, also runs in the worker), `sampleFrom`, `parseFCS`, `parseText`, `parseSpill`, `chStats` |
+| `Background parsing and memory` | `parseBuffer` (worker with fallback), memory budget (`mem`, `enforceBudget`, `evictSample`, `loadSample`), `ensureSummary` |
 | `Scales` | `makeScale` (lin / log / asinh), ticks, number formatting |
 | `State` | `state`, gate masks (`gateMask`, `computeMasks`) |
 | `Colours` | Theme tokens, `palette()`, greyscale table, overlay colours, `contourSegs` (marching squares), `smoothGrid` |
@@ -64,7 +68,9 @@ Everything is in `index.html`, in this order:
 
 A few conventions:
 - **Per-plot view settings** (`PANEL_VIEW`: population, channels, scales, zoom ranges, style, backgate, overlays) go through `panelView()` for undo and workspaces. Add new view settings there and in `cleanWorkspace`.
-- **Masks for samples that are not on screen** come from `masksFor(s)`, which recomputes only when gates or compensation changed.
+- **Masks for samples that are not on screen** come from `masksFor(s)`, which recomputes only when gates or compensation changed. `computeMasks` reuses any gate whose definition, parents and compensation are unchanged.
+- **A sample may be unloaded** (`s.raw === null`). Code that reads another sample's data must first `await loadSample(s)` (or skip it and redraw when it arrives, as overlays do).
+- **Compensated columns are lazy**: `s.cols[p]` may be a getter that computes the column on first read. Read the column before relying on that channel's statistics (`makeScale` does this for you).
 - **Browser storage** goes through `store` (wrapped in try/catch); it only holds conveniences (tab, theme, autosave).
 - **Gates live in data coordinates** (`g.pts`) together with the scale types they were drawn on (`g.xs`, `g.ys`). Membership is tested in that display space. `±EDGE` (1e30) means "this edge is open-ended".
 - **Quadrants are four ordinary polygon gates** with `shape: 'quad'`, a shared `quad.group`, their position `quad.q` (1–4) and the centre `qc`. Always move them with `setQuadCentre()` so the four stay linked.

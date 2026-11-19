@@ -161,6 +161,25 @@ The automated checks in [`tests/smoke.mjs`](tests/smoke.mjs) run the app in a he
 
 **These checks use synthetic data only.** SpectraFree has not yet been compared against FlowJo, FCS Express, ModFit or instrument software on real samples. If you do that comparison, please share the results in an issue.
 
+## Performance
+
+Timings for 1 million events in headless Chromium on a cloud machine (`npm run bench`, synthetic data, 20 gates). Your computer will differ, but the proportions hold.
+
+| 40 parameters, 1M events | 1.4.2 | 1.5.0 |
+|---|---|---|
+| Open two 160 MB files | 12.8 s, page frozen 11 s | 1.9 s, longest freeze 0.4 s |
+| Turn compensation on (until the plots show it) | 2.9 s | 0.3 s |
+| Compensate the two plotted channels | 2.7–3.4 s | 0.06–0.08 s |
+| Move a gate | 0.25–0.3 s | 0.02–0.07 s |
+| Switch to another tube (first visit) | 5.2 s | 0.3 s |
+| Redraw two plots | 0.02 s | 0.02 s |
+
+How:
+- **Compensation is lazy and sparse.** A compensated channel is worked out the first time something reads it (a plot, a gate, a statistic), using only the non-zero terms of the inverse matrix.
+- **Gates are incremental.** Moving a gate recalculates it and the gates inside it only. Rectangles and quadrants use a bounds test; polygons use a 256 × 256 grid so that only events near an edge need the exact test.
+- **Files are read in a background worker**, so the page stays responsive while large files load.
+- **Memory has a budget** (a quarter of the computer's memory, between 0.6 and 2.5 GB). Over it, the least recently used tubes are unloaded and read again from their files when you open them, overlay them or export them.
+
 ## Supported files
 
 - FCS 2.0, 3.0 and 3.1, list mode
@@ -175,7 +194,7 @@ The automated checks in [`tests/smoke.mjs`](tests/smoke.mjs) run the app in a he
 - **Autosave and workspaces keep the analysis, not the data.** Open your FCS files first, then restore the session or open the workspace. Autosave lives in one browser on one computer; use Export → Save workspace to move work elsewhere.
 - **One compensation matrix** applies to all samples. Height (-H) channels are not compensated unless you tick them.
 - **No dimensionality reduction (t-SNE/UMAP) or automated clustering** yet. Report pages are pictures (text in them is not selectable), apart from the editable slide titles in PowerPoint.
-- **Very large files** work: a 1-million-event, 10-channel file opens in about a tenth of a second of processing and the plots refresh in about 50 ms. Live updates while dragging a gate switch off above roughly 3 million event-gates, to keep dragging smooth.
+- **Very large files**: see [Performance](#performance). Data stays in the browser tab, so the practical limit is your computer's memory; tubes you are not using are unloaded and read again from the file when needed.
 - **The cell-cycle model is a simplified Dean-Jett-Fox fit.** It expects a clear G0/G1 peak with a G2/M peak at about twice the DNA.
 
 ## How it works
