@@ -49,6 +49,11 @@ Everything is in `index.html`, in this order:
 | `Compensation` | `applyComp`, `calcFromControls`, `autoCellMask`, `detectControls` |
 | `Cell cycle` | `fitCellCycle`, `singletWedge`, `runCellCycle`, results |
 | `Example data` | `writeFCS`, `makeTube`, `makeCellCycleTube` (synthetic tubes, seeded) |
+| `Channel names` | `setLabel`, the Channel names table, the rename form in the axis menu |
+| `Files out` / `Exports` | `saveFile` (viewer downloads or browser download), `makeZip`, `buildFCS`, CSV helpers, statistics / events / cell-cycle exports |
+| `Plot pictures` | `renderPanelImage` (high-resolution light-theme render), copy to clipboard, PNG export |
+| `Workspace` | `workspaceObject`, `cleanWorkspace` (validates untrusted files), `openWorkspace` |
+| `Export and plot menus` | `openMenu`, the Export menu, the right-click plot menu |
 | `Plot management` / `Start` | Adding and removing plots, start-up |
 
 A few conventions:

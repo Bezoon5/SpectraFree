@@ -87,7 +87,24 @@ Type a new number into the FL1-A → FL2-A cell, for example 20. The FL1+ popula
 
 > **Why the model percentages differ from the gate counts:** S-phase cells near the start and end of S phase overlap the G0/G1 and G2/M peaks. The model splits the overlap between phases; a simple range gate cannot. Model values are the better estimate.
 
-## 5. Working with your own files
+## 5. Names, pictures and exports
+
+### 5.1 Rename channels
+1. Right-click the X-axis title of Plot B and choose **Rename FL1-A…**.
+2. Type a marker and dye, for example *CD45 RB545*, and press Enter. The axis now reads **FL1-A · CD45 RB545**, and so do the menus, the compensation table and new quadrant names.
+3. To rename several channels at once, open **Channel names** near the bottom of the page. **Use file name** puts a channel back to the name stored in the FCS file.
+
+### 5.2 Put a plot into a report or slide
+1. Right-click inside a plot and choose **Copy plot (for Word, PowerPoint, Excel)**.
+2. Paste into your document. The picture is high resolution, on a white background, with the sample name, population and event count above it.
+3. If your browser blocks copying pictures, SpectraFree shows the picture in a window: right-click it and choose **Copy image**.
+
+### 5.3 Export numbers and events
+- **Export → Population statistics, all samples** gives one CSV row per sample and gate, with the median of every channel. It opens straight in Excel.
+- Select a gate, then **Export → As an FCS file** to save just those events as a new FCS file that FlowJo or any other software can open. **As a table** gives the same events as CSV.
+- **Export → Save workspace** keeps your gates, plots, channel names and compensation. Next time, open the same FCS files and then **Export → Open workspace…**.
+
+## 6. Working with your own files
 
 1. Export FCS files from your cytometer software. On the BD Accuri C6 / C6 Plus, export each sample as FCS.
 2. Click **Open FCS files** (or drag the files onto the page). You can open many at once.
@@ -111,6 +128,8 @@ Gates and the compensation matrix are not saved when you close the page (yet). U
 | Add / remove a polygon corner | Double-click an edge / a corner |
 | Finish a polygon | Double-click, click the first corner, or press Enter |
 | Place a quadrant | Choose Quadrant, then click the dividing point |
+| Rename a channel | Right-click its axis title → Rename, or use Channel names |
+| Copy a plot for Office | Right-click inside the plot → Copy plot |
 | Move a quadrant | Drag its centre (both lines), one line, or anywhere inside |
 | Cancel drawing or a drag | Esc |
 | Delete the selected gate | Delete or Backspace (after clicking a plot or the table) |

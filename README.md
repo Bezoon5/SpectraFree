@@ -35,6 +35,7 @@ Online or offline with your own data. Export FCS files from your cytometer softw
 - **Resize gates by their handles**: corners and sides for rectangles (they stay rectangular), corners for polygons, ends for ranges. Double-click a polygon edge to add a corner, or a corner to remove it.
 - **Gates apply across samples** by channel name. Switch tubes with ‹ › or the arrow keys and every plot and percentage updates.
 - **Population table** with events, % of parent, % of total, median, mean and CV. **Copy table** pastes straight into Excel.
+- **Your own channel names**: rename FL1-A to *CD45 RB545* from the axis menu or the **Channel names** table. Labels follow through to axes, tables, quadrant names and exports, while gates keep matching by channel.
 
 ![Three plots: an FSC/SSC plot with a selected lymphocyte gate showing resize handles, an FL1/FL2 plot, and an FL1 histogram with a FITC+ range gate](docs/screenshots/gating.png)
 
@@ -57,6 +58,17 @@ Online or offline with your own data. Export FCS files from your cytometer softw
 ![Cell-cycle plots: DNA area against height with a singlets gate, and a DNA histogram with the fitted G0/G1, S and G2/M components](docs/screenshots/cell-cycle-plots.png)
 
 ![Cell-cycle results for a G2/M-arrested sample, with quality checks and a comparison of two samples](docs/screenshots/cell-cycle-results.png)
+
+### Export and sharing
+- **Copy a plot for Microsoft Office**: right-click any plot and choose **Copy plot**, then paste into Word, PowerPoint or Excel. Plots are copied as high-resolution PNG on a white background with a caption (sample, population, event count). **Save plot as PNG** is in the same menu.
+- **Export menu** (top of the page):
+  - population statistics for **all samples** as CSV, with the median of every channel;
+  - cell-cycle results for all samples as CSV;
+  - the events in any gate as a new **FCS 3.1** file (channel labels kept) or as a CSV table;
+  - all plots together as one PNG;
+  - **workspaces**: save your gates, plots, channel names and compensation to a `.json` file and open it again later or on another computer.
+
+![The Export menu, with statistics, events, pictures and workspace options](docs/screenshots/export-menu.png)
 
 ### Everything else
 - **Undo and Redo** for gates, plots, compensation and cell-cycle gating (Ctrl+Z, Ctrl+Shift+Z or Ctrl+Y; ⌘ on a Mac).
@@ -107,7 +119,7 @@ The automated checks in [`tests/smoke.mjs`](tests/smoke.mjs) run the app in a he
 ## Limitations
 
 - **Not validated for clinical or diagnostic use.** Use it for training, teaching and exploratory research.
-- **No saved workspaces yet**: gates and the compensation matrix are lost when you close the page.
+- **Workspaces are saved by hand** (Export → Save workspace); nothing is kept automatically when you close the page. Workspaces record sample names but not the data, so open your FCS files first, then the workspace.
 - **One compensation matrix** applies to all samples. Height (-H) channels are not compensated unless you tick them.
 - **No dimensionality reduction (t-SNE/UMAP), clustering or batch export** yet.
 - **Very large files** work: a 1-million-event, 10-channel file opens in about a tenth of a second of processing and the plots refresh in about 50 ms. Live updates while dragging a gate switch off above roughly 3 million event-gates, to keep dragging smooth.

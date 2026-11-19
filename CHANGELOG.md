@@ -2,6 +2,15 @@
 
 All notable changes to SpectraFree are recorded here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/).
 
+## [1.2.0] - 2026-11-19
+
+### Added
+- Channel names: give any channel your own label (for example FL1-A → CD45 RB545) from the axis menu or the new Channel names table. Labels appear on axes, menus, tables, quadrant names and exports; gates still match by channel. Undoable.
+- Export menu: population statistics for all samples (CSV, with every channel's median), cell-cycle results (CSV), the events in a gate as FCS 3.1 or CSV, all plots as one PNG.
+- Workspaces: save gates, plots, channel names, compensation and cell-cycle set-up to JSON and open them again. Workspace files are validated before use.
+- Right-click a plot to copy it as a high-resolution PNG (white background, caption) for Word, PowerPoint or Excel, or to save it as PNG; a fallback window appears when the browser blocks copying images.
+- In the claude.ai viewer, files are saved through the viewer's download prompt; FCS exports are wrapped in a ZIP there because the viewer does not save `.fcs` files directly.
+
 ## [1.1.0] - 2026-11-19
 
 ### Added

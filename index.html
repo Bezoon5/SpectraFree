@@ -222,6 +222,26 @@ fieldset.chs legend{font-size:11px;text-transform:uppercase;letter-spacing:.06em
 #ccCompare tr.cur{background:var(--accent-soft)}
 #ccOut td:first-child{font-family:var(--f-sans);white-space:normal;min-width:110px}
 #ccOut th{white-space:normal}
+#labelsCard summary,#ccCard summary{cursor:pointer;font-weight:600;font-size:15px}
+.sumnote{color:var(--muted);font-weight:400;font-size:13px;margin-left:6px}
+.labelsintro{margin:10px 0}
+table.labels td{text-align:left;font-family:var(--f-sans)}
+table.labels td:first-child{font-family:var(--f-mono);white-space:nowrap}
+table.labels input{width:min(260px,100%)}
+.muted{color:var(--muted)}
+.axismenu.wide{max-width:min(380px,calc(100vw - 16px))}
+.axismenu.wide button{white-space:normal}
+.axismenu .mnote{white-space:normal;max-width:320px}
+.mrename{display:flex;flex-direction:column;gap:6px;padding:4px 6px 6px;min-width:260px}
+.mrename input{font:inherit;font-size:13px;padding:7px 8px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);color:var(--ink)}
+.axismenu .mbtns{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.axismenu .mbtns button{display:inline-flex;width:auto;padding:6px 10px;border:1px solid var(--line);color:var(--ink)}
+.axismenu .mbtns button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom, 0px));z-index:70;background:var(--ink);color:var(--surface);padding:10px 16px;border-radius:8px;font-size:13px;max-width:min(560px,calc(100vw - 32px));box-shadow:0 8px 24px rgba(20,8,40,.3)}
+.modal{position:fixed;inset:0;z-index:80;background:color-mix(in srgb, var(--bg) 70%, transparent);display:grid;place-items:center;padding:24px max(16px, env(safe-area-inset-right, 0px)) 24px max(16px, env(safe-area-inset-left, 0px))}
+.modalbox{background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:18px;max-width:min(720px,100%);max-height:calc(100vh - 48px);overflow:auto;display:flex;flex-direction:column;gap:10px;box-shadow:0 20px 50px rgba(20,8,40,.35)}
+.modalbox h2{font-size:16px}
+.modalimg{max-width:100%;height:auto;border:1px solid var(--line);border-radius:6px;background:#fff}
 .privacy{color:var(--on-bg-muted);font-size:12.5px;margin:0}
 </style>
 </head>
@@ -254,6 +274,8 @@ fieldset.chs legend{font-size:11px;text-transform:uppercase;letter-spacing:.06em
       </div>
       <div class="load">
         <label class="btn primary" for="file">Open FCS files</label>
+        <button type="button" id="exportBtn" class="btn hbtn" aria-haspopup="menu">Export <span aria-hidden="true">▾</span></button>
+        <input id="wsFile" type="file" accept=".json,application/json" hidden>
         <input id="file" type="file" accept=".fcs,.FCS,.lmd" multiple hidden>
         <span class="hint">or drop them anywhere on the page</span>
       </div>
@@ -342,8 +364,14 @@ fieldset.chs legend{font-size:11px;text-transform:uppercase;letter-spacing:.06em
     </div>
     <div class="tablewrap"><table id="popTable"></table></div>
     <div id="copyFallback" hidden><p class="note">Your browser blocked automatic copying. The table is selected below: press Ctrl+C (or ⌘C) to copy it.</p><textarea id="copyText" class="copyfall" aria-label="Table text to copy"></textarea></div>
-    <p class="note">Gates apply to every loaded sample, matched by channel name, so you can switch tubes and compare. Right-click an axis title (or click it with the Select tool) to change its channel or scale. Click a gate to select it. Drag inside it to move it, or drag its handles to resize it: corners and sides for rectangles, corners for polygons, ends for histogram ranges. Double-click a polygon's edge to add a corner, or a corner to remove it. A quadrant moves as one: drag its centre, either line, or anywhere inside it. Press Esc during a drag to undo it, or Delete to remove the selected gate. To draw a polygon, click to add corners, then double-click or click the first corner to close.</p>
+    <p class="note">Gates apply to every loaded sample, matched by channel name, so you can switch tubes and compare. Right-click an axis title (or click it with the Select tool) to change its channel or scale, or to rename the channel. Right-click inside a plot to copy it for Word, PowerPoint or Excel. Click a gate to select it. Drag inside it to move it, or drag its handles to resize it: corners and sides for rectangles, corners for polygons, ends for histogram ranges. Double-click a polygon's edge to add a corner, or a corner to remove it. A quadrant moves as one: drag its centre, either line, or anywhere inside it. Press Esc during a drag to undo it, or Delete to remove the selected gate. To draw a polygon, click to add corners, then double-click or click the first corner to close.</p>
   </section>
+
+  <details class="card" id="labelsCard">
+    <summary>Channel names <span class="sumnote">rename channels, for example FL1-A to CD45 RB545</span></summary>
+    <p class="sub labelsintro">Your labels appear on axes, menus, tables and exports. The channel itself (FL1-A) stays the same, so gates still match across files. You can also right-click an axis title and choose Rename.</p>
+    <div class="tablewrap"><table id="labelsTable" class="labels"></table></div>
+  </details>
 
   <details class="card kw">
     <summary>File keywords <span id="kwCount"></span></summary>
@@ -354,6 +382,15 @@ fieldset.chs legend{font-size:11px;text-transform:uppercase;letter-spacing:.06em
 </div>
 
 <div id="drop" class="drop" hidden><div>Drop FCS files to open them</div></div>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+<div id="modal" class="modal" hidden>
+  <div class="modalbox" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <h2 id="modalTitle"></h2>
+    <p id="modalText" class="sub"></p>
+    <div id="modalBody"></div>
+    <div id="modalActions" class="btnrow"></div>
+  </div>
+</div>
 
 <script>
 "use strict";
@@ -406,7 +443,10 @@ function parseFCS(buf, name){
     const bytes = dt === 'F' ? 4 : dt === 'D' ? 8 : B / 8;
     if (dt === 'I' && ![8,16,32].includes(B)) throw new Error(`parameter ${N} uses ${B}-bit integers, which this viewer does not read.`);
     readers.push({bytes, R, E, G, mask: dt === 'I' && R > 0 && Number.isInteger(Math.log2(R)) && R < 2 ** B});
-    ch.push({name: N, stain: S, label: S && S !== N ? `${N} · ${S}` : N, range: R});
+    const cobj = {name: N, stain: S, range: R};
+    // label follows the user's own name for the channel when there is one (Channel names), else the file's $PnS
+    Object.defineProperty(cobj, 'label', {enumerable: true, get(){ const t = state.labels?.[this.name] || this.stain; return t && t !== this.name ? `${this.name} · ${t}` : this.name; }});
+    ch.push(cobj);
     bpe += bytes;
   }
   if (!(dS > 0) || !(dE >= dS)) throw new Error('the file does not say where its data starts and ends.');
@@ -537,6 +577,7 @@ const cur = () => state.samples[state.cur] || null;
 const chOf = (s, name) => s && name in s.idx ? s.ch[s.idx[name]] : null;
 const gateById = id => state.gates.find(g => g.id === id);
 const chLabel = (s, name) => (s.compChs && s.compChs.has(name) ? 'Comp-' : '') + chOf(s, name).label;
+state.labels = {};
 state.comp = {on: false, chs: [], S: {}, ctrl: {}, unst: null, pop: 'auto'};
 // Undo/redo history: whole-analysis snapshots (gates, compensation, cell-cycle set-up, plot layout)
 const hist = {undo: [], redo: [], cur: null, sig: '', busy: 0};
@@ -682,8 +723,11 @@ class Panel {
     this.over.addEventListener('pointermove', e => this.onMove(e));
     this.over.addEventListener('pointerup', e => this.onUp(e));
     this.over.addEventListener('contextmenu', e => {
-      const r = this.over.getBoundingClientRect(), ax = this.axisAt(e.clientX - r.left, e.clientY - r.top);
-      if (ax){ e.preventDefault(); openAxisMenu(this, ax, e.clientX, e.clientY); }
+      const r = this.over.getBoundingClientRect();
+      if (!e.clientX && !e.clientY){ e.preventDefault(); openPlotMenu(this, r.left + r.width / 2, r.top + r.height / 3); return; }
+      const ax = this.axisAt(e.clientX - r.left, e.clientY - r.top);
+      e.preventDefault();
+      if (ax) openAxisMenu(this, ax, e.clientX, e.clientY); else if (cur()) openPlotMenu(this, e.clientX, e.clientY);
     });
     this.over.addEventListener('pointerleave', () => { if (this.hoverAxis){ this.hoverAxis = null; this.drawOver(); } this.readEl.textContent = ''; if (this.draft?.type === 'poly'){ this.draft.hover = null; this.drawOver(); } });
     this.over.addEventListener('dblclick', e => this.onDbl(e));
@@ -1241,7 +1285,7 @@ class Panel {
   }
   addQuadrant(u, v){
     const s = cur(), [cx, cy] = this.quadCentreFrom(u, v), group = state.nextId;
-    const short = n => { const c = chOf(s, n); return c?.stain || n.replace(/-[AHW]$/i, ''); };
+    const short = n => { const c = chOf(s, n); return state.labels[n] || c?.stain || n.replace(/-[AHW]$/i, ''); };
     const X = short(this.xn), Y = short(this.yn), parent = this.pop === 'all' ? null : this.pop;
     const signs = {1: ['−', '+'], 2: ['+', '+'], 3: ['+', '−'], 4: ['−', '−']};
     let pick = null;
@@ -1281,26 +1325,34 @@ function openAxisMenu(panel, axis, cx, cy){
   if (!(isY && hist)){
     const sc = isY ? panel.ys : panel.xs;
     html += `<div class="msep" role="separator"></div><div class="mhead">Scale</div>` +
-      [['lin', 'Linear'], ['log', 'Log'], ['asinh', 'Biexponential']].map(([v, l]) => item('sc:' + v, l, sc === v)).join('');
+      [['lin', 'Linear'], ['log', 'Log'], ['asinh', 'Biexponential']].map(([v, l]) => item('sc:' + v, l, sc === v)).join('') +
+      `<div class="msep" role="separator"></div><button type="button" role="menuitem" data-v="rename">Rename ${esc(curCh)}…</button>`;
   }
   axisMenu.innerHTML = html;
+  axisMenu.classList.remove('wide');
   axisMenu.setAttribute('aria-label', `Plot ${panel.key} ${isY ? 'Y' : 'X'} axis`);
-  menuCtx = {panel, axis};
+  menuCtx = {panel, axis, renameCh: curCh, returnFocus: panel.over};
   axisMenu.hidden = false;
   const w = axisMenu.offsetWidth, h = axisMenu.offsetHeight;
   axisMenu.style.left = Math.max(8, Math.min(cx, innerWidth - w - 8)) + 'px';
   axisMenu.style.top = (cy + h > innerHeight - 8 ? Math.max(8, cy - h) : cy) + 'px';
   (axisMenu.querySelector('[aria-checked="true"]') || axisMenu.querySelector('button'))?.focus({preventScroll: false});
 }
-function closeAxisMenu(){ if (axisMenu.hidden) return; axisMenu.hidden = true; menuCtx?.panel.over.focus({preventScroll: true, focusVisible: false}); menuCtx = null; }
+function closeAxisMenu(){ if (axisMenu.hidden) return; axisMenu.hidden = true; menuCtx?.returnFocus?.focus({preventScroll: true, focusVisible: false}); menuCtx = null; }
 axisMenu.addEventListener('click', e => {
   const b = e.target.closest('button[data-v]'); if (!b || !menuCtx) return;
-  const {panel, axis} = menuCtx, v = b.dataset.v;
+  const ctx = menuCtx, {panel, axis} = ctx, v = b.dataset.v;
+  if (v === 'rename'){ showRenameForm(ctx); return; }
+  if (v === 'cancel'){ closeAxisMenu(); return; }
+  if (v === 'reset'){ closeAxisMenu(); setLabel(ctx.renameCh, ''); return; }
   closeAxisMenu();
+  if (ctx.onPick){ ctx.onPick(v); return; }
   if (v.startsWith('ch:')) panel.setChannel(axis, v.slice(3));
   else if (v.startsWith('sc:')) panel.setScale(axis, v.slice(3));
 });
+axisMenu.addEventListener('submit', e => { e.preventDefault(); const ctx = menuCtx, v = $('#renameInput')?.value; closeAxisMenu(); if (ctx?.renameCh) setLabel(ctx.renameCh, v); });
 axisMenu.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT'){ if (e.key === 'Escape'){ e.preventDefault(); e.stopPropagation(); closeAxisMenu(); } return; }
   const items = [...axisMenu.querySelectorAll('button')], i = items.indexOf(document.activeElement);
   if (e.key === 'ArrowDown'){ e.preventDefault(); items[(i + 1) % items.length].focus(); }
   else if (e.key === 'ArrowUp'){ e.preventDefault(); items[(i - 1 + items.length) % items.length].focus(); }
@@ -1318,7 +1370,7 @@ const clone = o => JSON.parse(JSON.stringify(o));
 function snapshot(){
   const C = state.comp, cc = state.cc;
   return {
-    gates: clone(state.gates), nextId: state.nextId,
+    gates: clone(state.gates), nextId: state.nextId, labels: {...state.labels},
     comp: {on: C.on, chs: C.chs.slice(), S: {...C.S}, ctrl: {...C.ctrl}, unst: C.unst, pop: C.pop},
     cc: cc ? {ch: cc.ch, hch: cc.hch, parent: cc.parent, singId: cc.singId, wedge: cc.wedge ? clone(cc.wedge) : null} : null,
     panels: panels.map(p => ({key: p.key, defs: p.defs, pop: p.pop, xn: p.xn, yn: p.yn, y2: p.y2 ?? null, xs: p.xs, ys: p.ys, role: p.role ?? null})),
@@ -1327,17 +1379,21 @@ function snapshot(){
 // samples are compared by name; everything else by value
 const snapSig = snap => JSON.stringify(snap, (k, v) => v && typeof v === 'object' && v.raw && v.idx ? '#' + v.name : (k === 'defs' ? undefined : v));
 function resetHistory(){ hist.undo = []; hist.redo = []; hist.cur = snapshot(); hist.sig = snapSig(hist.cur); syncHistButtons(); }
-function markChange(){
+function markChange(label){
   if (hist.busy || !hist.cur) return;
   const snap = snapshot(), sig = snapSig(snap);
   if (sig === hist.sig) return;
-  hist.undo.push({snap: hist.cur, sig: hist.sig, label: describeChange(hist.cur, snap)});
+  hist.undo.push({snap: hist.cur, sig: hist.sig, label: label || describeChange(hist.cur, snap)});
   if (hist.undo.length > HIST_MAX) hist.undo.shift();
   hist.redo = []; hist.cur = snap; hist.sig = sig;
   syncHistButtons();
 }
 function describeChange(a, b){
   const same = (x, y) => snapSig(x) === snapSig(y);
+  if (!same(a.labels || {}, b.labels || {})){
+    const k = [...new Set([...Object.keys(a.labels || {}), ...Object.keys(b.labels || {})])].find(k => (a.labels || {})[k] !== (b.labels || {})[k]);
+    return `rename channel ${k}`;
+  }
   if (!same(a.cc, b.cc)) return 'cell-cycle auto-gating';
   if (b.gates.length > a.gates.length){ const n = b.gates.filter(g => !a.gates.some(h => h.id === g.id)); return n.length === 1 ? `add gate ${n[0].name}` : n.every(g => g.quad) ? 'add quadrant' : 'add gates'; }
   if (b.gates.length < a.gates.length){ const n = a.gates.filter(g => !b.gates.some(h => h.id === g.id)); return n.length === 1 ? `delete gate ${n[0].name}` : n[0].quad ? 'delete quadrant' : `delete gate ${n[0].name} and the gates inside it`; }
@@ -1360,7 +1416,7 @@ function describeChange(a, b){
 function restoreSnapshot(snap){
   hist.busy++;
   try {
-    state.gates = clone(snap.gates); state.nextId = snap.nextId;
+    state.gates = clone(snap.gates); state.nextId = snap.nextId; state.labels = {...(snap.labels || {})};
     const C = state.comp, live = x => x && state.samples.includes(x) ? x : null;
     C.on = snap.comp.on; C.chs = snap.comp.chs.slice(); C.S = {...snap.comp.S}; C.pop = snap.comp.pop; C.unst = live(snap.comp.unst);
     C.ctrl = {}; for (const [k, x] of Object.entries(snap.comp.ctrl)) if (live(x)) C.ctrl[k] = x;
@@ -1375,7 +1431,7 @@ function restoreSnapshot(snap){
       p.fillChannels(); p.setTool('select');
     }
     if (state.sel != null && !gateById(state.sel)) state.sel = null;
-    renderComp(); fillCellCycleSetup(); refresh();
+    fillStatSel(); renderLabels(); renderComp(); fillCellCycleSetup(); refresh();
   } finally { hist.busy--; }
 }
 function undo(){
@@ -1447,10 +1503,8 @@ function setCurrentInner(i){
     if (!state.comp.chs.length) state.comp.chs = candidates(s);
     const meta = [['Cytometer', s.kw['$CYT'] || '—'], ['Acquired', s.kw['$DATE'] || '—'], ['Events', nf.format(s.n)], ['Channels', s.ch.length], ['Format', s.ver]];
     $('#meta').innerHTML = meta.map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('');
-    const stat = $('#statSel');
-    stat.innerHTML = s.ch.map(c => `<option value="${esc(c.name)}">${esc(c.label)}</option>`).join('');
-    if (!(state.statCh in s.idx)) state.statCh = s.ch.find(c => /^FL1|FITC|^FL/i.test(c.name))?.name || s.ch[0].name;
-    stat.value = state.statCh;
+    fillStatSel();
+    renderLabels();
     const keys = Object.keys(s.kw).sort();
     $('#kwCount').textContent = `(${keys.length})`;
     $('#kwTable').innerHTML = '<tbody>' + keys.map(k => `<tr><td>${esc(k)}</td><td>${esc(s.kw[k])}</td></tr>`).join('') + '</tbody>';
@@ -1499,7 +1553,7 @@ function popRows(){
 const fmtN = (v, d) => Number.isFinite(v) ? v.toLocaleString('en-GB', {maximumFractionDigits: d, minimumFractionDigits: d}) : '—';
 function renderTable(){
   const s = cur(), t = $('#popTable'); if (!s){ t.innerHTML = ''; return; }
-  const rows = popRows(), ch = esc(state.statCh), total = s.n;
+  const rows = popRows(), ch = esc(chOf(s, state.statCh)?.label || state.statCh), total = s.n;
   const cnt = id => rows.find(r => r.id === id)?.c || 0;
   t.innerHTML = `<thead><tr><th>Population</th><th>Events</th><th>% of parent</th><th>% of total</th><th>Median ${ch}</th><th>Mean ${ch}</th><th>CV</th><th><span hidden>Actions</span></th></tr></thead><tbody>` +
     rows.map(r => {
@@ -2162,6 +2216,356 @@ $('#ccCopy').addEventListener('click', () => {
   try { navigator.clipboard.writeText(txt).then(() => { btn.textContent = 'Copied'; setTimeout(() => btn.textContent = 'Copy results', 1600); }, () => { $('#copyFallback').hidden = false; $('#copyText').value = txt; $('#copyText').select(); }); }
   catch(e){ $('#copyFallback').hidden = false; $('#copyText').value = txt; $('#copyText').select(); }
 });
+
+/* ---------------- Channel names ---------------- */
+function fillStatSel(){
+  const s = cur(); if (!s) return;
+  const stat = $('#statSel');
+  stat.innerHTML = s.ch.map(c => `<option value="${esc(c.name)}">${esc(c.label)}</option>`).join('');
+  if (!(state.statCh in s.idx)) state.statCh = s.ch.find(c => /^FL1|FITC|^FL/i.test(c.name))?.name || s.ch[0].name;
+  stat.value = state.statCh;
+}
+function setLabel(name, text){
+  const s = cur(), c = chOf(s, name); if (!c) return;
+  text = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 60);
+  if (!text || text === (c.stain || '')) delete state.labels[name]; else state.labels[name] = text;
+  labelsChanged();
+  markChange();
+}
+function labelsChanged(){
+  if (!cur()) return;
+  panels.forEach(p => { p.fillChannels(); p.draw(); });
+  fillStatSel(); renderComp(); fillCellCycleSetup(); renderTable(); renderCellCycle(); renderLabels();
+}
+function renderLabels(){
+  const s = cur(), t = $('#labelsTable'); if (!s){ t.innerHTML = ''; return; }
+  t.innerHTML = `<thead><tr><th>Channel</th><th>Name in the file</th><th>Your label</th><th><span hidden>Actions</span></th></tr></thead><tbody>` +
+    s.ch.map((c, i) => `<tr><td>${esc(c.name)}</td><td>${c.stain ? esc(c.stain) : '<span class="muted">none</span>'}</td>
+      <td><input type="text" class="lbl" id="lbl-${i}" data-ch="${esc(c.name)}" maxlength="60" value="${esc(state.labels[c.name] || '')}" placeholder="${esc(c.stain || 'e.g. CD45 RB545')}" aria-label="Label for ${esc(c.name)}"></td>
+      <td>${state.labels[c.name] ? `<button type="button" class="del" data-reset="${esc(c.name)}">Use file name</button>` : ''}</td></tr>`).join('') + '</tbody>';
+}
+$('#labelsTable').addEventListener('change', e => { const inp = e.target.closest('.lbl'); if (inp) setLabel(inp.dataset.ch, inp.value); });
+$('#labelsTable').addEventListener('click', e => { const b = e.target.closest('[data-reset]'); if (b) setLabel(b.dataset.reset, ''); });
+function showRenameForm(ctx){
+  const s = cur(), name = ctx.renameCh, c = chOf(s, name); if (!c) return;
+  axisMenu.innerHTML = `<form class="mrename"><div class="mhead">Rename ${esc(name)}</div>
+    <label for="renameInput" class="mnote">Label shown after the channel name, for example CD45 RB545</label>
+    <input id="renameInput" type="text" maxlength="60" autocomplete="off" value="${esc(state.labels[name] ?? c.stain ?? '')}">
+    <div class="mbtns"><button type="submit" class="btn primary">Save</button><button type="button" class="btn" data-v="reset">Use file name</button><button type="button" class="btn" data-v="cancel">Cancel</button></div></form>`;
+  const inp = $('#renameInput'); inp.focus(); inp.select();
+}
+
+/* ---------------- Files out: saving, zip, FCS writer ---------------- */
+const inFrame = (() => { try { return window.top !== window.self; } catch (e){ return true; } })();
+let dlPromise = null;
+const getDownloads = () => dlPromise || (dlPromise = (window.claude && typeof window.claude.use === 'function') ? window.claude.use('downloads').catch(() => null) : Promise.resolve(null));
+getDownloads(); // warm up so the first export doesn't wait
+let toastTimer;
+function toast(t){ const el = $('#toast'); el.textContent = t; el.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { el.hidden = true; }, 4200); }
+// Hands a file to the viewer: the claude.ai downloads capability where available, a browser download in a plain page,
+// otherwise a dialog to copy the content.
+async function saveFile(name, blob, kind){
+  const d = await getDownloads();
+  if (d){
+    let fname = name, data = blob;
+    // .fcs is not on the viewer's list of savable types, so it goes inside a .zip
+    if (/\.fcs$/i.test(name)){ data = makeZip([{name, data: new Uint8Array(await blob.arrayBuffer())}]); fname = name.replace(/\.fcs$/i, '.zip'); }
+    try { await d.save({filename: fname, data}); toast(fname !== name ? `Saved ${fname} (it contains ${name})` : `Saved ${fname}`); return; }
+    catch (e){
+      if (e?.code === 'declined') return;
+      if (e?.code === 'rate_limited'){ toast('Another save is still waiting for an answer. Try again in a moment.'); return; }
+    }
+  }
+  if (!inFrame){
+    const url = URL.createObjectURL(blob), a = document.createElement('a');
+    a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    toast(`Downloaded ${name}`); return;
+  }
+  if (kind === 'image') return showImageModal(blob, name, 'This view can\'t save files. Right-click the picture and choose Save image as, or Copy image.');
+  if (kind === 'text') return showTextModal(await blob.text(), name);
+  toast(`This view can't save ${name}. Open SpectraFree as a standalone page (the .html file) to export it.`);
+}
+const CRC_TABLE = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++){ let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(u8){ let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = CRC_TABLE[(c ^ u8[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+// Minimal ZIP (stored, no compression): enough to carry an .fcs file through a viewer that only saves certain types.
+function makeZip(files){
+  const enc = new TextEncoder(), parts = [], central = [], now = new Date();
+  const time = (now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1);
+  const date = ((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
+  let off = 0;
+  for (const f of files){
+    const nm = enc.encode(f.name), crc = crc32(f.data), sz = f.data.length;
+    const lh = new DataView(new ArrayBuffer(30));
+    lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true); lh.setUint16(8, 0, true);
+    lh.setUint16(10, time, true); lh.setUint16(12, date, true); lh.setUint32(14, crc, true); lh.setUint32(18, sz, true); lh.setUint32(22, sz, true);
+    lh.setUint16(26, nm.length, true); lh.setUint16(28, 0, true);
+    parts.push(new Uint8Array(lh.buffer), nm, f.data);
+    const ch = new DataView(new ArrayBuffer(46));
+    ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true); ch.setUint16(10, 0, true);
+    ch.setUint16(12, time, true); ch.setUint16(14, date, true); ch.setUint32(16, crc, true); ch.setUint32(20, sz, true); ch.setUint32(24, sz, true);
+    ch.setUint16(28, nm.length, true); ch.setUint32(42, off, true);
+    central.push(new Uint8Array(ch.buffer), nm);
+    off += 30 + nm.length + sz;
+  }
+  const cdSize = central.reduce((a, b) => a + b.length, 0), end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true); end.setUint16(10, files.length, true);
+  end.setUint32(12, cdSize, true); end.setUint32(16, off, true);
+  return new Blob([...parts, ...central, new Uint8Array(end.buffer)], {type: 'application/zip'});
+}
+// FCS 3.1 writer: 32-bit float, little-endian, UTF-8 TEXT segment with escaped delimiters
+function buildFCS(chs, cols, extra){
+  const P = chs.length, n = cols.length ? cols[0].length : 0, dataLen = n * P * 4, D = '|', enc = new TextEncoder();
+  const ev = v => { v = String(v ?? ''); if (!v.length) v = ' '; return v.split(D).join(D + D); };
+  const kv = [['$BEGINANALYSIS', '0'], ['$ENDANALYSIS', '0'], ['$BEGINSTEXT', '0'], ['$ENDSTEXT', '0'],
+    ['$BEGINDATA', '0'.repeat(20)], ['$ENDDATA', '0'.repeat(20)], ['$BYTEORD', '1,2,3,4'], ['$DATATYPE', 'F'], ['$MODE', 'L'],
+    ['$NEXTDATA', '0'], ['$PAR', String(P)], ['$TOT', String(n)], ...extra.filter(([, v]) => v !== '' && v != null)];
+  chs.forEach((c, i) => { const p = i + 1; kv.push([`$P${p}N`, c.name], [`$P${p}B`, '32'], [`$P${p}E`, '0,0'], [`$P${p}R`, String(Math.max(1, Math.ceil(c.range)))]); if (c.label) kv.push([`$P${p}S`, c.label]); });
+  const build = () => enc.encode(D + kv.map(([k, v]) => ev(k) + D + ev(v)).join(D) + D);
+  let tb = build();
+  const tS = 58, tE = tS + tb.length - 1, dS = tE + 1, dE = dS + dataLen - 1;
+  kv.find(k => k[0] === '$BEGINDATA')[1] = String(dS).padStart(20, '0');
+  kv.find(k => k[0] === '$ENDDATA')[1] = String(dataLen ? dE : 0).padStart(20, '0');
+  tb = build();
+  const p8 = v => String(v > 99999999 ? 0 : v).padStart(8, ' ');
+  const header = 'FCS3.1    ' + p8(tS) + p8(tE) + p8(dataLen ? dS : 0) + p8(dataLen ? dE : 0) + p8(0) + p8(0);
+  const out = new Uint8Array(dS + dataLen), dv = new DataView(out.buffer);
+  for (let i = 0; i < header.length; i++) out[i] = header.charCodeAt(i);
+  out.set(tb, tS);
+  let o = dS;
+  for (let e = 0; e < n; e++) for (let p = 0; p < P; p++){ dv.setFloat32(o, cols[p][e], true); o += 4; }
+  return out;
+}
+const csvCell = v => { const t = v == null ? '' : String(v); return /[",\n\r]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; };
+const csvLine = arr => arr.map(csvCell).join(',') + '\r\n';
+const fileSafe = t => String(t).replace(/\.fcs$/i, '').replace(/[^\w.\- ]+/g, '_').replace(/\s+/g, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '').slice(0, 80) || 'export';
+const today = () => new Date().toISOString().slice(0, 10);
+const fcsDate = () => { const d = new Date(); return `${String(d.getDate()).padStart(2, '0')}-${['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'][d.getMonth()]}-${d.getFullYear()}`; };
+
+/* ---------------- Exports ---------------- */
+const exportPop = () => state.sel != null && gateById(state.sel) ? state.sel : 'all';
+function exportEvents(fmt, popId = exportPop()){
+  const s = cur(); if (!s) return;
+  const m = popMask(s, popId), idx = [];
+  for (let i = 0; i < s.n; i++) if (m[i]) idx.push(i);
+  if (!idx.length){ toast(`There are no events in ${popName(popId)} in this sample.`); return; }
+  const chs = s.ch.map((c, p) => ({name: c.name, label: state.labels[c.name] || c.stain || '', range: Math.max(c.range, c.max), col: s.cols[p]}));
+  const comp = s.compChs?.size > 0, base = `${fileSafe(s.name)}_${fileSafe(popName(popId))}${comp ? '_comp' : ''}`;
+  if (fmt === 'fcs'){
+    const cols = chs.map(c => { const a = new Float32Array(idx.length); for (let k = 0; k < idx.length; k++) a[k] = c.col[idx[k]]; return a; });
+    const bytes = buildFCS(chs, cols, [['$FIL', base + '.fcs'], ['$DATE', fcsDate()], ['$CYT', s.kw['$CYT'] || ''], ['$SRC', `SpectraFree export of ${s.name}, population ${popName(popId)}`],
+      ['SF_SOURCE_FILE', s.name], ['SF_POPULATION', popName(popId)], ['SF_COMPENSATED', comp ? 'yes' : 'no']]);
+    saveFile(base + '.fcs', new Blob([bytes], {type: 'application/octet-stream'}), 'binary');
+  } else {
+    const parts = ['﻿' + csvLine(chs.map(c => c.label ? `${c.name} (${c.label})` : c.name))];
+    let buf = '';
+    for (let k = 0; k < idx.length; k++){
+      const i = idx[k]; buf += chs.map(c => { const v = c.col[i]; return Number.isInteger(v) ? v : +v.toPrecision(7); }).join(',') + '\r\n';
+      if (buf.length > 1 << 20){ parts.push(buf); buf = ''; }
+    }
+    parts.push(buf);
+    saveFile(base + '.csv', new Blob(parts, {type: 'text/csv'}), 'text');
+  }
+}
+function exportStats(){
+  const s0 = cur(); if (!s0) return;
+  const names = [...new Set(state.samples.flatMap(x => x.ch.filter(c => !c.isTime).map(c => c.name)))];
+  const labelOf = n => chOf(s0, n)?.label || state.samples.map(x => chOf(x, n)).find(Boolean)?.label || n;
+  const parts = ['﻿' + csvLine(['Sample', 'Population', 'Parent', 'Events', '% of parent', '% of total', 'Compensated', ...names.map(n => `Median ${labelOf(n)}`)])];
+  const pops = [{id: 'all', name: 'All events', parent: null}, ...treeOrder().map(({g}) => ({id: g.id, name: g.name, parent: g.parent ?? 'all'}))];
+  for (const x of state.samples){
+    applyComp(x); computeMasks(x);
+    for (const p of pops){
+      const m = popMask(x, p.id), c = popCount(x, p.id), pc = p.parent == null ? null : popCount(x, p.parent);
+      const meds = names.map(n => n in x.idx ? statsFor(x, m, x.cols[x.idx[n]]).med : NaN);
+      parts.push(csvLine([x.name, p.name, p.parent == null ? '' : popName(p.parent), c, pc == null ? '' : (pc ? (100 * c / pc).toFixed(2) : '0'),
+        (100 * c / (x.n || 1)).toFixed(2), x.compChs?.size ? 'yes' : 'no', ...meds.map(v => Number.isFinite(v) ? +v.toPrecision(6) : '')]));
+    }
+  }
+  applyComp(s0); computeMasks(s0);
+  saveFile(`spectrafree-statistics-${today()}.csv`, new Blob(parts, {type: 'text/csv'}), 'text');
+}
+function exportCellCycle(){
+  const cc = state.cc; if (!cc?.compare?.length){ toast('Run cell-cycle auto-gating first.'); return; }
+  const lines = ['﻿' + csvLine(['Sample', 'Single cells', 'Sub-G1 %', 'G0/G1 %', 'S %', 'G2/M %', '>4N %', 'G0/G1 peak', 'G2/M peak', 'G2/G1 ratio', 'CV G0/G1 %', 'CV G2/M %'])];
+  for (const {x, f} of cc.compare) lines.push(csvLine([x.name, f.total, ...[f.sub, f.G1, f.S, f.G2, f.poly].map(v => (100 * v / f.total).toFixed(2)), Math.round(f.mu1), Math.round(f.mu2), f.ratio.toFixed(3), (100 * f.cv1).toFixed(2), (100 * f.cv2).toFixed(2)]));
+  saveFile(`spectrafree-cell-cycle-${today()}.csv`, new Blob(lines, {type: 'text/csv'}), 'text');
+}
+
+/* ---------------- Plot pictures ---------------- */
+// Redraws one plot at high resolution in the light theme, with a caption, for documents and slides.
+function renderPanelImage(p, scale = 3){
+  const s = cur(), root = document.documentElement, prevTheme = root.getAttribute('data-theme');
+  const prevSel = state.sel, prevHover = p.hoverAxis, prevDraft = p.draft, prevDpr = p.dpr, S = p.size;
+  root.setAttribute('data-theme', 'light'); themeChanged(); state.sel = null; p.hoverAxis = null; p.draft = null;
+  let out;
+  try {
+    p.dpr = scale;
+    for (const c of [p.base, p.over]){ c.width = Math.round(S * scale); c.height = Math.round(S * scale); }
+    p.draw();
+    const cap = 50, pal = palette();
+    out = document.createElement('canvas'); out.width = Math.round(S * scale); out.height = Math.round((S + cap) * scale);
+    const x = out.getContext('2d');
+    x.fillStyle = '#ffffff'; x.fillRect(0, 0, out.width, out.height);
+    x.setTransform(scale, 0, 0, scale, 0, 0); x.textBaseline = 'top';
+    const fit = (t, w) => { if (x.measureText(t).width <= w) return t; while (t.length > 1 && x.measureText(t + '…').width > w) t = t.slice(0, -1); return t + '…'; };
+    x.fillStyle = '#14202b'; x.font = `600 14px ${pal.fSans}`; x.fillText(fit(s.name, S - 28), 14, 10);
+    x.fillStyle = '#5a6877'; x.font = `12px ${pal.fSans}`;
+    x.fillText(fit(`${popName(p.pop)} · ${nf.format(popCount(s, p.pop))} events${s.compChs?.size ? ' · compensated' : ''}`, S - 28), 14, 30);
+    x.setTransform(1, 0, 0, 1, 0, 0);
+    x.drawImage(p.base, 0, Math.round(cap * scale)); x.drawImage(p.over, 0, Math.round(cap * scale));
+  } finally {
+    if (prevTheme == null) root.removeAttribute('data-theme'); else root.setAttribute('data-theme', prevTheme);
+    themeChanged(); state.sel = prevSel; p.hoverAxis = prevHover; p.draft = prevDraft; p.dpr = prevDpr; p.resize();
+  }
+  return out;
+}
+const plotFileName = p => `${fileSafe(cur().name)}_plot-${p.key}_${fileSafe(p.isHist ? p.xn : p.xn + '-vs-' + p.yn)}.png`;
+const canvasBlob = c => new Promise(r => c.toBlob(r, 'image/png'));
+function copyPlot(p){
+  const blobP = canvasBlob(renderPanelImage(p, 3));
+  const fallback = async () => showImageModal(await blobP, plotFileName(p), 'Your browser didn\'t allow copying the picture directly. Right-click it and choose Copy image (on a Mac, Control-click), then paste into Word, PowerPoint or Excel.', !inFrame || !!(await getDownloads()));
+  try {
+    if (!navigator.clipboard?.write || typeof ClipboardItem === 'undefined') throw new Error('unsupported');
+    navigator.clipboard.write([new ClipboardItem({'image/png': blobP})])
+      .then(() => toast(`Plot ${p.key} copied. Paste it into Word, PowerPoint or Excel.`), fallback);
+  } catch (e){ fallback(); }
+}
+async function savePlot(p){ saveFile(plotFileName(p), await canvasBlob(renderPanelImage(p, 3)), 'image'); }
+async function exportAllPlots(){
+  const s = cur(); if (!s || !panels.length) return;
+  const imgs = panels.map(p => renderPanelImage(p, 2)), colsN = Math.min(2, imgs.length), gap = 32;
+  const cw = Math.max(...imgs.map(c => c.width)), chh = Math.max(...imgs.map(c => c.height)), rowsN = Math.ceil(imgs.length / colsN);
+  const out = document.createElement('canvas');
+  out.width = colsN * cw + (colsN + 1) * gap; out.height = rowsN * chh + (rowsN + 1) * gap;
+  const x = out.getContext('2d'); x.fillStyle = '#ffffff'; x.fillRect(0, 0, out.width, out.height);
+  imgs.forEach((c, i) => x.drawImage(c, gap + (i % colsN) * (cw + gap), gap + Math.floor(i / colsN) * (chh + gap)));
+  saveFile(`${fileSafe(s.name)}_plots.png`, await canvasBlob(out), 'image');
+}
+
+/* ---------------- Dialog (fallbacks) ---------------- */
+let modalUrl = null, modalReturn = null;
+function openModal(title, text, bodyHtml, actions){
+  modalReturn = document.activeElement;
+  $('#modalTitle').textContent = title; $('#modalText').textContent = text; $('#modalBody').innerHTML = bodyHtml;
+  const acts = $('#modalActions'); acts.innerHTML = '';
+  for (const [label, fn, primary] of actions){ const b = document.createElement('button'); b.type = 'button'; b.className = 'btn' + (primary ? ' primary' : ''); b.textContent = label; b.addEventListener('click', fn); acts.appendChild(b); }
+  const close = document.createElement('button'); close.type = 'button'; close.className = 'btn'; close.textContent = 'Close'; close.addEventListener('click', closeModal); acts.appendChild(close);
+  $('#modal').hidden = false; (acts.querySelector('.primary') || close).focus();
+}
+function closeModal(){ $('#modal').hidden = true; $('#modalBody').innerHTML = ''; if (modalUrl){ URL.revokeObjectURL(modalUrl); modalUrl = null; } modalReturn?.focus?.(); }
+function showImageModal(blob, name, text, canSave){
+  modalUrl = URL.createObjectURL(blob);
+  openModal('Copy or save the picture', text, `<img src="${modalUrl}" alt="${esc(name)}" class="modalimg">`,
+    canSave ? [['Save as PNG', () => { closeModal(); saveFile(name, blob, 'image'); }, true]] : []);
+}
+function showTextModal(content, name){
+  openModal(`Copy ${name}`, 'This view can\'t save files. Copy the text below and paste it into a text file or Excel.', `<textarea class="copyfall" id="modalTextArea" aria-label="${esc(name)}" readonly></textarea>`,
+    [['Copy', () => { const ta = $('#modalTextArea'); try { navigator.clipboard.writeText(ta.value).then(() => toast('Copied'), () => { ta.select(); }); } catch (e){ ta.select(); } }, true]]);
+  $('#modalTextArea').value = content;
+}
+$('#modal').addEventListener('keydown', e => { if (e.key === 'Escape'){ e.stopPropagation(); closeModal(); } });
+$('#modal').addEventListener('click', e => { if (e.target.id === 'modal') closeModal(); });
+
+/* ---------------- Workspace ---------------- */
+function workspaceObject(){
+  const C = state.comp, cc = state.cc;
+  return {
+    app: 'SpectraFree', format: 1, savedAt: new Date().toISOString(), samples: state.samples.map(x => x.name),
+    gates: clone(state.gates.map(g => { const {example, ...rest} = g; return rest; })), nextId: state.nextId, labels: {...state.labels},
+    comp: {on: C.on, chs: C.chs.slice(), S: {...C.S}, pop: C.pop, unst: C.unst?.name ?? null, ctrl: Object.fromEntries(Object.entries(C.ctrl).filter(([, x]) => x).map(([k, x]) => [k, x.name]))},
+    cellCycle: cc ? {ch: cc.ch, hch: cc.hch, parent: cc.parent, singId: cc.singId} : null,
+    plots: panels.map(p => ({key: p.key, pop: p.pop, xn: p.xn, yn: p.yn, y2: p.y2 ?? null, xs: p.xs, ys: p.ys, role: p.role ?? null})),
+    statCh: state.statCh,
+  };
+}
+function saveWorkspace(){
+  const s = cur(), json = JSON.stringify(workspaceObject(), null, 2);
+  saveFile(`spectrafree-workspace-${s && !s.example ? fileSafe(s.name) + '-' : ''}${today()}.json`, new Blob([json], {type: 'application/json'}), 'text');
+}
+// A workspace file comes from outside: keep only well-formed values.
+function cleanWorkspace(o){
+  if (!o || o.app !== 'SpectraFree' || !Array.isArray(o.gates) || !Array.isArray(o.plots)) throw new Error('this is not a SpectraFree workspace file.');
+  const num = v => typeof v === 'number' && Number.isFinite(v), str = v => typeof v === 'string' && v.length <= 200;
+  const scale = v => ['lin', 'log', 'asinh'].includes(v);
+  const gates = o.gates.filter(g => g && num(g.id) && str(g.name) && ['poly', 'range'].includes(g.type) && str(g.xch) && scale(g.xs) &&
+      (g.type === 'range' ? true : str(g.ych) && scale(g.ys)) && (g.parent == null || num(g.parent)) &&
+      Array.isArray(g.pts) && g.pts.length >= 2 && g.pts.length <= 200 && g.pts.every(p => Array.isArray(p) && p.length === (g.type === 'range' ? 1 : 2) && p.every(num)))
+    .map(g => ({id: g.id, name: g.name.slice(0, 80), parent: g.parent ?? null, type: g.type, shape: ['rect', 'poly', 'range', 'quad'].includes(g.shape) ? g.shape : g.type,
+      xch: g.xch, ych: g.type === 'range' ? null : g.ych, xs: g.xs, ys: g.type === 'range' ? null : g.ys, pts: g.pts.map(p => p.slice()),
+      ...(g.quad && num(g.quad.group) && [1, 2, 3, 4].includes(g.quad.q) && Array.isArray(g.qc) && g.qc.length === 2 && g.qc.every(num) ? {quad: {group: g.quad.group, q: g.quad.q}, qc: g.qc.slice()} : {}),
+      ...(g.cc ? {cc: true} : {})}));
+  if (o.gates.length && !gates.length) throw new Error('none of its gates could be read, so nothing was changed.');
+  const ids = new Set(gates.map(g => g.id));
+  gates.forEach(g => { if (g.parent != null && !ids.has(g.parent)) g.parent = null; });
+  const popOk = v => v === 'all' || (num(v) && ids.has(v)) ? v : 'all';
+  const byName = n => state.samples.find(x => x.name === n) || null;
+  const labels = {}; if (o.labels && typeof o.labels === 'object') for (const [k, v] of Object.entries(o.labels)) if (str(k) && str(v)) labels[k] = v.slice(0, 60);
+  const S = {}; if (o.comp?.S && typeof o.comp.S === 'object') for (const [k, v] of Object.entries(o.comp.S)) if (str(k) && num(v)) S[k] = v;
+  const ctrl = {}; if (o.comp?.ctrl && typeof o.comp.ctrl === 'object') for (const [k, v] of Object.entries(o.comp.ctrl)) if (str(k) && byName(v)) ctrl[k] = byName(v);
+  const plots = o.plots.filter(p => p && str(p.key) && /^[A-Z]{1,2}\d{0,2}$/.test(p.key) && str(p.xn) && str(p.yn) && scale(p.xs) && scale(p.ys)).slice(0, MAX_PLOTS)
+    .map((p, i) => ({key: p.key, defs: PLOT_DEFAULTS[Math.min(i, PLOT_DEFAULTS.length - 1)], pop: popOk(p.pop), xn: p.xn, yn: p.yn, y2: str(p.y2) ? p.y2 : null, xs: p.xs, ys: p.ys, role: str(p.role) ? p.role : null}));
+  if (!plots.length) plots.push({key: 'A', defs: PLOT_DEFAULTS[0], pop: 'all', xn: 'FSC-A', yn: 'SSC-A', y2: null, xs: 'log', ys: 'log', role: null});
+  const ccIn = o.cellCycle;
+  const cc = ccIn && str(ccIn.ch) && (ccIn.hch === '' || str(ccIn.hch)) ? {ch: ccIn.ch, hch: ccIn.hch, parent: popOk(ccIn.parent), singId: num(ccIn.singId) && ids.has(ccIn.singId) ? ccIn.singId : null, wedge: null} : null;
+  return {
+    snap: {gates, nextId: Math.max(num(o.nextId) ? o.nextId : 1, ...gates.map(g => g.id + 1), 1), labels,
+      comp: {on: !!o.comp?.on, chs: Array.isArray(o.comp?.chs) ? o.comp.chs.filter(str) : [], S, ctrl, unst: byName(o.comp?.unst), pop: o.comp?.pop === 'all' || o.comp?.pop === 'auto' ? o.comp.pop : popOk(o.comp?.pop)},
+      cc, panels: plots},
+    statCh: str(o.statCh) ? o.statCh : null,
+    missing: (Array.isArray(o.samples) ? o.samples.filter(n => str(n) && !byName(n)) : []),
+  };
+}
+async function openWorkspace(file){
+  let w;
+  try { w = cleanWorkspace(JSON.parse(await file.text())); }
+  catch (e){ showMsg(`Couldn't open ${file.name}: ${e instanceof SyntaxError ? 'it is not valid JSON.' : e.message}`, false); return; }
+  restoreSnapshot(w.snap);
+  if (w.statCh && cur() && w.statCh in cur().idx){ state.statCh = w.statCh; fillStatSel(); renderTable(); }
+  markChange('open workspace');
+  const g = w.snap.gates.length, pl = w.snap.panels.length;
+  showMsg(`Opened ${file.name}: ${g} gate${g === 1 ? '' : 's'} and ${pl} plot${pl === 1 ? '' : 's'}.` + (w.missing.length ? ` It was saved with ${w.missing.length} sample${w.missing.length === 1 ? '' : 's'} that ${w.missing.length === 1 ? 'is' : 'are'} not open now (${w.missing.slice(0, 3).join(', ')}${w.missing.length > 3 ? '…' : ''}); the gates apply to any sample with the same channel names.` : ''), true);
+}
+$('#wsFile').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if (f) openWorkspace(f); });
+
+/* ---------------- Export and plot menus ---------------- */
+function openMenu(html, label, cx, cy, onPick, returnFocus, wide){
+  axisMenu.innerHTML = html; axisMenu.setAttribute('aria-label', label);
+  axisMenu.classList.toggle('wide', !!wide);
+  menuCtx = {onPick, returnFocus}; axisMenu.hidden = false;
+  const w = axisMenu.offsetWidth, h = axisMenu.offsetHeight;
+  axisMenu.style.left = Math.max(8, Math.min(cx, innerWidth - w - 8)) + 'px';
+  axisMenu.style.top = (cy + h > innerHeight - 8 ? Math.max(8, cy - h) : cy) + 'px';
+  axisMenu.querySelector('button')?.focus({preventScroll: true});
+}
+const mitem = (v, label) => `<button type="button" role="menuitem" data-v="${esc(v)}">${esc(label)}</button>`;
+function openExportMenu(){
+  const s = cur(); if (!s) return;
+  const b = $('#exportBtn').getBoundingClientRect(), pop = popName(exportPop());
+  const html = `<div class="mhead">Statistics</div>` + mitem('stats', 'Population statistics, all samples (.csv)') +
+    (state.cc?.compare?.length ? mitem('cc', 'Cell-cycle results, all samples (.csv)') : '') +
+    `<div class="msep" role="separator"></div><div class="mhead">Events in ${esc(pop)}</div>` +
+    mitem('fcs', 'As an FCS file') + mitem('csv', 'As a table (.csv)') +
+    `<div class="mnote">From ${esc(s.name)}. Select a gate first to export just its events.</div>` +
+    `<div class="msep" role="separator"></div><div class="mhead">Pictures</div>` + mitem('plots', 'All plots as one image (.png)') +
+    `<div class="mnote">Right-click any plot to copy it for Word, PowerPoint or Excel.</div>` +
+    `<div class="msep" role="separator"></div><div class="mhead">Workspace</div>` + mitem('ws-save', 'Save workspace (.json)') + mitem('ws-open', 'Open workspace…') +
+    `<div class="mnote">A workspace keeps your gates, plots, channel names and compensation. Open your FCS files first, then the workspace.</div>`;
+  openMenu(html, 'Export', Math.max(8, b.right - 340), b.bottom + 6, v => {
+    if (v === 'stats') exportStats(); else if (v === 'cc') exportCellCycle();
+    else if (v === 'fcs' || v === 'csv') exportEvents(v); else if (v === 'plots') exportAllPlots();
+    else if (v === 'ws-save') saveWorkspace(); else if (v === 'ws-open') $('#wsFile').click();
+  }, $('#exportBtn'), true);
+}
+$('#exportBtn').addEventListener('click', e => { e.stopPropagation(); if (!axisMenu.hidden && menuCtx?.returnFocus === $('#exportBtn')){ closeAxisMenu(); return; } openExportMenu(); });
+function openPlotMenu(p, cx, cy){
+  const pop = popName(p.pop);
+  const html = `<div class="mhead">Plot ${esc(p.key)}</div>` + mitem('copy', 'Copy plot (for Word, PowerPoint, Excel)') + mitem('png', 'Save plot as PNG') +
+    `<div class="msep" role="separator"></div><div class="mhead">Events in ${esc(pop)}</div>` + mitem('fcs', 'Export as FCS') + mitem('csv', 'Export as a table (.csv)');
+  openMenu(html, `Plot ${p.key}`, cx, cy, v => {
+    if (v === 'copy') copyPlot(p); else if (v === 'png') savePlot(p); else if (v === 'fcs' || v === 'csv') exportEvents(v, p.pop);
+  }, p.over, true);
+}
 
 /* ---------------- Plot management ---------------- */
 const MAX_PLOTS = 8;

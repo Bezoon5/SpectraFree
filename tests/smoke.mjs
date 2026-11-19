@@ -167,6 +167,49 @@ try {
   check('biexponential ticks are in order', misc.ticksSorted);
   await page.close();
 
+  // ---------- channel names, FCS export, zip and workspace
+  page = await freshPage();
+  const io = await page.evaluate(async () => {
+    const out = {};
+    setLabel('FL1-A', 'CD45 RB545');
+    out.label = chOf(cur(), 'FL1-A').label;
+    out.labelUndo = hist.undo.at(-1).label;
+    // export the lymphocyte gate as FCS in memory and read it back
+    const s = cur(), m = popMask(s, 1), idx = [];
+    for (let i = 0; i < s.n; i++) if (m[i]) idx.push(i);
+    const chs = s.ch.map((c, p) => ({name: c.name, label: state.labels[c.name] || c.stain || '', range: c.range, col: s.cols[p]}));
+    const cols = chs.map(c => Float32Array.from(idx, i => c.col[i]));
+    const back = parseFCS(buildFCS(chs, cols, [['$SRC', 'test | with a pipe']]).buffer, 'roundtrip.fcs');
+    out.roundN = back.n === idx.length;
+    out.roundVals = cols.every((c, p) => c.every((v, k) => back.raw[p][k] === v));
+    out.roundLabel = back.ch[2].stain;
+    out.roundKw = back.kw['$SRC'];
+    // zip structure
+    const z = new Uint8Array(await makeZip([{name: 'a.fcs', data: new TextEncoder().encode('abc')}]).arrayBuffer());
+    out.zipSig = z[0] === 0x50 && z[1] === 0x4b && z[2] === 3 && z[3] === 4;
+    // workspace: save, wreck, reopen
+    const ws = JSON.stringify(workspaceObject());
+    deleteGate(1); setLabel('FL1-A', '');
+    await openWorkspace(new File([ws], 'ws.json'));
+    out.wsGates = state.gates.length; out.wsLabel = state.labels['FL1-A'];
+    // a malicious or broken workspace is rejected without changing anything
+    const before = state.gates.length;
+    await openWorkspace(new File(['{"app":"SpectraFree","gates":[{"id":"x","pts":"<img>"}],"plots":[]}'], 'bad.json'));
+    out.badKept = state.gates.length === before;
+    return out;
+  });
+  check('renaming a channel updates its label', io.label === 'FL1-A · CD45 RB545', io.label);
+  check('renaming is an undo step', io.labelUndo === 'rename channel FL1-A');
+  check('exported FCS has the right number of events', io.roundN);
+  check('exported FCS values read back exactly', io.roundVals);
+  check('exported FCS keeps the channel label', io.roundLabel === 'CD45 RB545', io.roundLabel);
+  check('FCS writer escapes the delimiter in keywords', io.roundKw === 'test | with a pipe', io.roundKw);
+  check('ZIP file starts with a local file header', io.zipSig);
+  check('workspace restores gates', io.wsGates === 3, String(io.wsGates));
+  check('workspace restores channel names', io.wsLabel === 'CD45 RB545');
+  check('an unreadable workspace is refused without changing anything', io.badKept);
+  await page.close();
+
   check('no JavaScript errors', errors.length === 0, errors.slice(0, 3).join(' | '));
 } finally {
   await browser.close();
