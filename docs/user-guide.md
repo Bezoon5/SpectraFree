@@ -6,7 +6,9 @@ A hands-on walkthrough using the example data that loads when you first open Spe
 - [2. Gating](#2-gating)
 - [3. Compensation](#3-compensation)
 - [4. Cell-cycle analysis](#4-cell-cycle-analysis)
-- [5. Working with your own files](#5-working-with-your-own-files)
+- [5. Names, pictures and exports](#5-names-pictures-and-exports)
+- [6. Working with your own files](#6-working-with-your-own-files)
+- [7. Viewing tools: zoom, overlays, backgating, styles](#7-viewing-tools-zoom-overlays-backgating-styles)
 - [Keyboard and mouse reference](#keyboard-and-mouse-reference)
 - [Glossary](#glossary)
 
@@ -14,19 +16,22 @@ A hands-on walkthrough using the example data that loads when you first open Spe
 
 ## 1. Find your way around
 
-From top to bottom, the page has:
+The page has:
 
 | Area | What it does |
 |---|---|
-| **Header** | Undo / Redo, and **Open FCS files** |
-| **Sample bar** | The current tube, with ‹ › to step through tubes and the file's details on the right |
-| **Plots** | Plot A, Plot B and any you add. Each plot is a dot plot or a histogram |
-| **Compensation** | Spillover matrix, Auto-compensate and control-tube assignments |
-| **Cell cycle** | DNA-content auto-gating and results |
-| **Populations** | Every gate with counts and statistics |
-| **File keywords** | All metadata stored in the FCS file |
+| **Header** | Undo / Redo, the light/dark theme button, **Open FCS files** and **Export** |
+| **Sidebar: Samples** | Every open tube with its event count. Click one to switch to it. Below the list, **Volume analysed** gives events per µL |
+| **Sidebar: Gates** | The gate hierarchy with counts and % of parent. Click a gate to select it; the eye shows that population in the active plot; ▼ folds a branch |
+| **Sample bar** | The current tube, with ‹ › to step through tubes and the file's details |
+| **Plots** | Plot A, Plot B and any you add. Each is a dot plot or a histogram. The plot you last clicked is **active** (outlined); keyboard tools act on it |
+| **Tabs** | **Populations** (statistics table), **Compensation**, **Cell cycle**, **Channel names**, **File keywords** |
 
-**Try it:** step through the samples with **›** and watch both plots and the population table change. The gates stay put: they apply to every tube that has the same channel names.
+On a phone, the sidebar moves below the plots.
+
+**Try it:** click the tubes in the sidebar one by one and watch both plots and the counts change. The gates stay put: they apply to every tube that has the same channel names.
+
+SpectraFree saves your gates, plots and settings in this browser as you work. Next time you open it, a bar offers to restore your last session.
 
 ## 2. Gating
 
@@ -60,7 +65,7 @@ From top to bottom, the page has:
 ## 3. Compensation
 
 ### 3.1 One click
-1. Scroll to **Compensation** and press **Auto-compensate**.
+1. Open the **Compensation** tab and press **Auto-compensate**.
 2. Read **What Auto-compensate used**: it found the unstained tube and one single-stain tube for each channel.
 3. The spillover matrix fills in. FITC into FL2 is about 12%, and PE into FL3 about 18%.
 4. Go back to Plot B. The FL1+ population is now level: the spillover is gone. The axes now read **Comp-FL1-A** and **Comp-FL2-A**.
@@ -77,7 +82,7 @@ Type a new number into the FL1-A → FL2-A cell, for example 20. The FL1+ popula
 ## 4. Cell-cycle analysis
 
 1. Choose **Example: cell cycle, untreated (PI, synthetic)**.
-2. In **Cell cycle**, the DNA channel is set to FL2-A · PI and the doublet check to FL2-H. Press **Run auto-gating**.
+2. In the **Cell cycle** tab, the DNA channel is set to FL2-A · PI and the doublet check to FL2-H. Press **Run auto-gating**.
 3. Two plots appear:
    - **DNA area against height**: single cells form a straight diagonal band. Clumps of two cells sit below it, because they have twice the DNA area but not twice the height. The **Singlets** gate keeps the band.
    - **DNA histogram** of single cells, with the fitted G0/G1 (green), S (amber) and G2/M (blue) components and the model total (dashed).
@@ -92,7 +97,7 @@ Type a new number into the FL1-A → FL2-A cell, for example 20. The FL1+ popula
 ### 5.1 Rename channels
 1. Right-click the X-axis title of Plot B and choose **Rename FL1-A…**.
 2. Type a marker and dye, for example *CD45 RB545*, and press Enter. The axis now reads **FL1-A · CD45 RB545**, and so do the menus, the compensation table and new quadrant names.
-3. To rename several channels at once, open **Channel names** near the bottom of the page. **Use file name** puts a channel back to the name stored in the FCS file.
+3. To rename several channels at once, open the **Channel names** tab. **Use file name** puts a channel back to the name stored in the FCS file.
 
 ### 5.2 Put a plot into a report or slide
 1. Right-click inside a plot and choose **Copy plot (for Word, PowerPoint, Excel)**.
@@ -102,6 +107,8 @@ Type a new number into the FL1-A → FL2-A cell, for example 20. The FL1+ popula
 ### 5.3 Export numbers and events
 - **Export → Population statistics, all samples** gives one CSV row per sample and gate, with the median of every channel. It opens straight in Excel.
 - Select a gate, then **Export → As an FCS file** to save just those events as a new FCS file that FlowJo or any other software can open. **As a table** gives the same events as CSV.
+- **Export → PDF report** or **PowerPoint** makes one page (or slide) per sample, with every plot and the population table. In the PowerPoint file the title of each slide is editable text.
+- With a volume set (sidebar, or the file's `$VOL` keyword), the table and the statistics export include **events per µL**.
 - **Export → Save workspace** keeps your gates, plots, channel names and compensation. Next time, open the same FCS files and then **Export → Open workspace…**.
 
 ## 6. Working with your own files
@@ -114,13 +121,43 @@ Type a new number into the FL1-A → FL2-A cell, for example 20. The FL1+ popula
    - **Axis scales**: SpectraFree picks Log for wide-range channels and Linear for DNA, time and width. Change them from the axis menu if needed.
    - **A couple of gate percentages** match your usual software for the same gate.
 
-Gates and the compensation matrix are not saved when you close the page (yet). Use **Copy table** and **Copy results** to keep your numbers.
+Your gates, plots and compensation are saved in this browser automatically, but the FCS data is not. To pick up where you left off, open the same files first, then press **Restore**. To move work to another computer, use **Export → Save workspace**.
+
+## 7. Viewing tools: zoom, overlays, backgating, styles
+
+### 7.1 Zoom and axis ranges
+1. Press **Z** (or pick **Zoom** in the plot's tools) and drag a box around the lymphocytes in Plot A.
+2. The plot zooms in; gates and counts do not change. **Reset zoom** (top right of the plot, or **0**) shows the full axes again.
+3. For exact numbers, right-click an axis title and choose **Set range…**. You can type `20k` or `1.5M`.
+
+### 7.2 Overlay samples on a histogram
+1. Switch Plot B to **Histogram** (or press **H** with Plot B active) and pick FL1-A.
+2. Right-click the plot → **Overlay samples…** and tick the unstained control and the FITC single stain.
+3. Each ticked sample is drawn as a coloured line, in the same population. **Normalise to mode** scales every curve to a peak of 100%, which makes tubes with different event counts comparable.
+
+### 7.3 Backgating
+1. Right-click Plot A → **Backgate a population…** → **FL1+**.
+2. The FL1+ events light up in orange on the scatter plot, over a grey background. This shows where a fluorescent population sits on FSC/SSC, a quick check that your scatter gate is not cutting it off.
+
+### 7.4 Plot styles
+Right-click a dot plot and choose **Density**, **Contour**, **Dots** or **Greyscale density**. Contours are drawn at evenly spaced log-density levels; events outside the lowest contour are shown as dots.
+
+### 7.5 One-click gates
+Right-click a dot plot → **Auto-gate on this plot**:
+- **Main cell population** outlines the densest cluster on the plot (on the example data, it matches the hand-drawn lymphocyte gate to within 3%).
+- **Singlets** draws a wedge around the main area/height ratio. It uses the plot's channels if they are an -A / -H pair, and otherwise switches the plot to FSC-A against FSC-H.
+
+Both make ordinary gates: adjust them with the handles, or undo.
 
 ## Keyboard and mouse reference
 
 | Action | How |
 |---|---|
 | Undo / Redo | Ctrl+Z / Ctrl+Shift+Z or Ctrl+Y (⌘ on a Mac) |
+| Tools on the active plot | **V** Select, **R** Rectangle, **P** Polygon, **Q** Quadrant, **G** Range (histograms), **Z** Zoom |
+| Reset zoom | **0**, the Reset zoom button, or double-click with the Zoom tool |
+| Dot plot ↔ histogram | **H** |
+| Show a population in the active plot | The eye in the sidebar's gate tree, or double-click the gate's name |
 | Change a plot's channel or scale | Right-click the axis title (or click it with Select) |
 | Select a gate | Click it, or its row in Populations |
 | Move a gate | Drag inside it |
@@ -133,7 +170,7 @@ Gates and the compensation matrix are not saved when you close the page (yet). U
 | Move a quadrant | Drag its centre (both lines), one line, or anywhere inside |
 | Cancel drawing or a drag | Esc |
 | Delete the selected gate | Delete or Backspace (after clicking a plot or the table) |
-| Next / previous sample | ‹ › buttons, or arrow keys in the sample list |
+| Next / previous sample | ‹ › buttons, the sidebar list, or ← → (when no text box has focus) |
 
 ## Glossary
 
@@ -145,4 +182,6 @@ Gates and the compensation matrix are not saved when you close the page (yet). U
 - **Singlets**: single cells, as opposed to clumps (doublets) that would be miscounted as G2/M.
 - **G0/G1, S, G2/M**: cell-cycle phases with 2N DNA, DNA being copied, and 4N DNA.
 - **Sub-G1**: events with less DNA than G0/G1, usually apoptotic cells.
+- **Backgating**: highlighting a gated population on a plot of other channels, to see where it sits.
+- **Events/µL**: an absolute count: events in a population divided by the volume of sample the cytometer analysed.
 - **CV**: coefficient of variation, the spread of a peak relative to its position. Lower is sharper.

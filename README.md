@@ -44,9 +44,18 @@ Online or offline with your own data. Export FCS files from your cytometer softw
 - **Resize gates by their handles**: corners and sides for rectangles (they stay rectangular), corners for polygons, ends for ranges. Double-click a polygon edge to add a corner, or a corner to remove it.
 - **Gates apply across samples** by channel name. Switch tubes with ‹ › or the arrow keys and every plot and percentage updates.
 - **Population table** with events, % of parent, % of total, median, mean and CV. **Copy table** pastes straight into Excel.
+- **Zoom and axis ranges**: drag with the Zoom tool or type exact limits; gates and counts are unaffected.
+- **One-click gates**: right-click a plot for the main cell population (densest cluster) or singlets (area against height).
 - **Your own channel names**: rename FL1-A to *CD45 RB545* from the axis menu or the **Channel names** table. Labels follow through to axes, tables, quadrant names and exports, while gates keep matching by channel.
 
 ![Three plots: an FSC/SSC plot with a selected lymphocyte gate showing resize handles, an FL1/FL2 plot, and an FL1 histogram with a FITC+ range gate](docs/screenshots/gating.png)
+
+### Seeing your data
+- **Histogram overlays**: draw other samples as coloured lines on any histogram, optionally normalised to mode.
+- **Backgating**: highlight any population in colour on another plot, for example FL1+ cells on FSC/SSC.
+- **Plot styles**: density (pseudocolour), contour, dots or greyscale.
+
+![Plot A as a contour plot, Plot B with FL1+ cells backgated in orange, and a histogram overlaying three samples](docs/screenshots/styles-overlays.png)
 
 ![A quadrant gate on compensated FITC against PE data, shown on biexponential axes, with the percentage of each quadrant in the plot corners](docs/screenshots/quadrant.png)
 
@@ -68,7 +77,11 @@ Online or offline with your own data. Export FCS files from your cytometer softw
 
 ![Cell-cycle results for a G2/M-arrested sample, with quality checks and a comparison of two samples](docs/screenshots/cell-cycle-results.png)
 
+### Absolute counts
+- **Events per µL** in the population table and statistics export, from the file's `$VOL` keyword (FCS 3.1) or a volume you type in for each sample.
+
 ### Export and sharing
+- **Batch reports**: one page per sample, with every plot and the population table, as a **PDF** or a **PowerPoint** file (editable slide titles).
 - **Copy a plot for Microsoft Office**: right-click any plot and choose **Copy plot**, then paste into Word, PowerPoint or Excel. Plots are copied as high-resolution PNG on a white background with a caption (sample, population, event count). **Save plot as PNG** is in the same menu.
 - **Export menu** (top of the page):
   - population statistics for **all samples** as CSV, with the median of every channel;
@@ -77,11 +90,19 @@ Online or offline with your own data. Export FCS files from your cytometer softw
   - all plots together as one PNG;
   - **workspaces**: save your gates, plots, channel names and compensation to a `.json` file and open it again later or on another computer.
 
-![The Export menu, with statistics, events, pictures and workspace options](docs/screenshots/export-menu.png)
+![The Export menu, with statistics, events, reports, pictures and workspace options](docs/screenshots/export-menu.png)
+
+![A PDF report page: header with sample details, three plots and the population table](docs/screenshots/report-page.png)
+
+### Workspace layout
+- **Sidebar** with the sample list (click to switch) and a collapsible **gate tree** with counts and percentages. Click a gate to select it; the eye shows that population in the active plot.
+- **Tabs** for Populations, Compensation, Cell cycle, Channel names and File keywords.
+- **Keyboard shortcuts**: V Select, R Rectangle, P Polygon, Q Quadrant, G Range, Z Zoom, 0 Reset zoom, H dot plot / histogram, ← → samples.
+- **Autosave**: gates, plots and settings are kept in your browser as you work, and offered back next time you open SpectraFree.
 
 ### Everything else
 - **Undo and Redo** for gates, plots, compensation and cell-cycle gating (Ctrl+Z, Ctrl+Shift+Z or Ctrl+Y; ⌘ on a Mac).
-- **Light and dark themes** follow your system setting. **Phone and tablet layouts** work too.
+- **Light and dark themes**: follows your system, or pick one with the button in the header. **Phone and tablet layouts** work too.
 - **File keyword viewer** for every TEXT keyword in the FCS file.
 
 | Dark mode | Phone |
@@ -128,15 +149,15 @@ The automated checks in [`tests/smoke.mjs`](tests/smoke.mjs) run the app in a he
 ## Limitations
 
 - **Not validated for clinical or diagnostic use.** Use it for training, teaching and exploratory research.
-- **Workspaces are saved by hand** (Export → Save workspace); nothing is kept automatically when you close the page. Workspaces record sample names but not the data, so open your FCS files first, then the workspace.
+- **Autosave and workspaces keep the analysis, not the data.** Open your FCS files first, then restore the session or open the workspace. Autosave lives in one browser on one computer; use Export → Save workspace to move work elsewhere.
 - **One compensation matrix** applies to all samples. Height (-H) channels are not compensated unless you tick them.
-- **No dimensionality reduction (t-SNE/UMAP), clustering or batch export** yet.
+- **No dimensionality reduction (t-SNE/UMAP) or automated clustering** yet. Report pages are pictures (text in them is not selectable), apart from the editable slide titles in PowerPoint.
 - **Very large files** work: a 1-million-event, 10-channel file opens in about a tenth of a second of processing and the plots refresh in about 50 ms. Live updates while dragging a gate switch off above roughly 3 million event-gates, to keep dragging smooth.
 - **The cell-cycle model is a simplified Dean-Jett-Fox fit.** It expects a clear G0/G1 peak with a G2/M peak at about twice the DNA.
 
 ## How it works
 
-Everything lives in [`index.html`](index.html): about 2,200 lines of plain HTML, CSS and JavaScript, with no framework, no build step and no external libraries. The only network request is for Google Fonts, and the app works without it.
+Everything lives in [`index.html`](index.html): about 3,400 lines of plain HTML, CSS and JavaScript, with no framework, no build step and no external libraries. The only network request is for Google Fonts, and the app works without it.
 
 - **FCS parsing** reads the HEADER, TEXT and DATA segments straight from the file's bytes.
 - **Plots** are drawn on HTML canvas as binned density images with a pseudocolour scale. The **Biexponential** axis is an arcsinh transform whose linear zone around zero is sized from the data (how far it reaches below zero), so compensated populations spread out instead of piling up at zero.

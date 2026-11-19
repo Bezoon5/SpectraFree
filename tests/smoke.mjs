@@ -68,6 +68,7 @@ try {
   check('FL1+ gate holds about 38% of lymphocytes', near(gates.fl1, 0.379, 0.01), (100 * gates.fl1).toFixed(1) + '%');
 
   // ---------- auto-compensation
+  await page.click('#tab-comp');
   await page.click('#autoCompBtn');
   const S = await page.evaluate(() => state.comp.S);
   check('FITC → PE spillover ≈ 12%', near(S['FL1-A|FL2-A'], 0.12, 0.012), (100 * S['FL1-A|FL2-A']).toFixed(2) + '%');
@@ -94,6 +95,7 @@ try {
   const cc = {};
   for (const [kind, label] of [['untreated', /untreated/], ['arrest', /arrest/]]){
     await page.evaluate(src => setCurrent(state.samples.findIndex(s => new RegExp(src).test(s.name))), label.source);
+    await page.click('#tab-cc');
     await page.click('#ccRun');
     cc[kind] = await page.evaluate(() => { const f = state.cc.fit; return f.ok ? { g1: f.G1 / f.total, s: f.S / f.total, g2: f.G2 / f.total, ratio: f.ratio } : null; });
   }
@@ -208,6 +210,79 @@ try {
   check('workspace restores gates', io.wsGates === 3, String(io.wsGates));
   check('workspace restores channel names', io.wsLabel === 'CD45 RB545');
   check('an unreadable workspace is refused without changing anything', io.badKept);
+  await page.close();
+
+  // ---------- 1.3: zoom, overlays, styles, auto-gates, counts, reports, layout
+  page = await freshPage();
+  const v13 = await page.evaluate(async () => {
+    const o = {}, s = cur(), A = panels[0], B = panels[1];
+    // zoom changes the view but not the gates or counts
+    const before = s.counts.get(1);
+    A.setRange('x', {lo: 3e5, hi: 3e6}); A.setRange('y', {lo: 5e4, hi: 2e6});
+    o.zoomKeepsCounts = cur().counts.get(1) === before && A.zoomed;
+    o.zoomTicks = ticks(A.sx).filter(t => t.major).length >= 2 && ticks(A.sx).every(t => t.u >= -1e-6 && t.u <= 1 + 1e-6);
+    o.zoomInWorkspace = JSON.stringify(workspaceObject().plots[0].xr) === JSON.stringify({lo: 3e5, hi: 3e6});
+    undo(); o.zoomUndo = !A.yr && !!A.xr; A.resetZoom(); o.zoomReset = !A.zoomed;
+    // a gate drawn on a zoomed plot keeps finite edges at the zoomed border
+    A.setRange('x', {lo: 3e5, hi: 3e6}); o.edgeFinite = Math.abs(edgeInv(A.sx, 1)) < 1e29; A.resetZoom();
+    // plot styles and backgating draw without errors
+    for (const st of ['contour', 'dots', 'grey', 'density']){ B.style = st; B.draw(); }
+    B.backgate = 2; B.draw(); o.backgate = B.backgate === 2; B.backgate = null;
+    // histogram overlays
+    B.setType('hist'); B.overlay = [state.samples[1].name, state.samples[2].name]; B.norm = true; B.draw();
+    o.overlayDrawn = B.hmax > 100 && B.hmax < 110;
+    B.overlay = []; B.norm = false; B.setType('dot');
+    // auto-gate on the scatter plot finds the lymphocytes
+    autoGateCells(A);
+    const g = state.gates[state.gates.length - 1], m1 = popMask(s, g.id), m2 = popMask(s, 1); let both = 0, n1 = 0, n2 = 0;
+    for (let i = 0; i < s.n; i++){ n1 += m1[i]; n2 += m2[i]; both += m1[i] && m2[i]; }
+    o.autoCells = both / Math.max(n1, n2);
+    // singlets on the cell-cycle tube
+    setCurrent(state.samples.findIndex(x => /untreated/.test(x.name)));
+    autoGateSinglets(panels[1]); const sg = state.gates[state.gates.length - 1];
+    o.singlets = sg.name === 'Singlets' ? popCount(cur(), sg.id) / cur().n : 0;
+    setCurrent(0);
+    // absolute counts: example tubes carry $VOL = 25 µL; a typed volume overrides it
+    o.volFile = sampleVol(cur()); setVolume(cur(), '50'); o.volTyped = sampleVol(cur());
+    o.concColumn = [...document.querySelectorAll('#popTable th')].some(t => t.textContent === 'Events/µL');
+    o.volWorkspace = workspaceObject().volumes[cur().name] === 50;
+    // gate tree lists every gate and the eye shows a population in the active plot
+    o.treeRows = document.querySelectorAll('#gateTree .trow').length === state.gates.length + 1;
+    setActive(panels[1]); document.querySelector('#gateTree .trow[data-id="2"] .tshow').click(); o.treeShow = panels[1].pop === 2;
+    // reports
+    const pdf = buildPDF([{w: 4, h: 3, jpg: await jpegBytes(Object.assign(document.createElement('canvas'), {width: 4, height: 3}))}], 842, 595);
+    o.pdfHead = new TextDecoder().decode(new Uint8Array(await pdf.slice(0, 8).arrayBuffer()));
+    const page1 = composeReportPage(1600, 1131, {page: 1, pages: 1}); o.reportPage = page1.width === 1600;
+    const pptx = buildPPTX([{title: 'T & <x>', sub: 'sub', jpg: await jpegBytes(page1), w: 1600, h: 1131}]);
+    o.pptxZip = new Uint8Array(await pptx.slice(0, 2).arrayBuffer()).join() === '80,75';
+    return o;
+  });
+  check('zoom leaves gate counts unchanged', v13.zoomKeepsCounts);
+  check('zoomed axes have at least two labelled ticks inside the plot', v13.zoomTicks);
+  check('zoom is saved in workspaces', v13.zoomInWorkspace);
+  check('zoom is an undo step', v13.zoomUndo);
+  check('Reset zoom shows the full axes', v13.zoomReset);
+  check('gates drawn at a zoomed border stay finite', v13.edgeFinite);
+  check('backgating can be set', v13.backgate);
+  check('normalised histogram overlays draw on a 0–100% scale', v13.overlayDrawn);
+  check('main-population auto-gate matches the lymphocyte gate', v13.autoCells > 0.9, (100 * v13.autoCells).toFixed(1) + '% overlap');
+  check('singlet auto-gate keeps most events', v13.singlets > 0.7 && v13.singlets < 0.98, (100 * v13.singlets).toFixed(1) + '%');
+  check('volume read from $VOL', v13.volFile === 25, String(v13.volFile));
+  check('a typed volume overrides $VOL', v13.volTyped === 50);
+  check('events/µL column appears with a volume', v13.concColumn);
+  check('volumes are saved in workspaces', v13.volWorkspace);
+  check('gate tree lists every gate', v13.treeRows);
+  check('gate tree eye shows the population in the active plot', v13.treeShow);
+  check('PDF writer output starts with %PDF-1.4', v13.pdfHead === '%PDF-1.4', v13.pdfHead);
+  check('report page renders', v13.reportPage);
+  check('PowerPoint package is a ZIP', v13.pptxZip);
+  // keyboard shortcuts and tabs
+  await page.click('#panelA canvas.over', { position: { x: 200, y: 200 } });
+  await page.keyboard.press('r');
+  check('R picks the rectangle tool on the active plot', await page.evaluate(() => panels[0].tool === 'rect'));
+  await page.keyboard.press('v');
+  await page.click('#tab-comp');
+  check('tabs switch the visible section', await page.evaluate(() => !$('#pane-comp').hidden && $('#pane-pop').hidden));
   await page.close();
 
   check('no JavaScript errors', errors.length === 0, errors.slice(0, 3).join(' | '));

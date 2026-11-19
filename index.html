@@ -32,7 +32,7 @@
 :root{
   --bg:#4b2479; --on-bg:#ffffff; --on-bg-muted:#d9c8ee;
   --surface:#ffffff; --surface-2:#f7f4fb; --ink:#1d1428; --muted:#62577a; --line:#e0d8ea;
-  --accent:#6b33c4; --accent-ink:#ffffff; --accent-soft:#eee6fa; --gate:#1d1428; --sel:#d2462b; --plot:#ffffff;
+  --accent:#6b33c4; --accent-ink:#ffffff; --accent-soft:#eee6fa; --gate:#1d1428; --sel:#d2462b; --plot:#ffffff; --backgate:#f76707;
   --danger:#b53a24;
   --d0:#3b4cc0; --d1:#2aa6d6; --d2:#3fb95f; --d3:#efc12b; --d4:#de4426;
   --cc-g1:#1f9d6a; --cc-s:#d99a12; --cc-g2:#2f63d6; --cc-sub:#8e83a6;
@@ -45,7 +45,7 @@
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
   --bg:#24113b; --on-bg:#f3ecfc; --on-bg-muted:#b9a5d4;
   --surface:#1a1326; --surface-2:#150f20; --ink:#ebe5f4; --muted:#a093b5; --line:#33284a;
-  --accent:#b48cff; --accent-ink:#1a0b33; --accent-soft:#33235a; --gate:#f4f0fa; --sel:#ff8a6b; --plot:#110c1a;
+  --accent:#b48cff; --accent-ink:#1a0b33; --accent-soft:#33235a; --gate:#f4f0fa; --sel:#ff8a6b; --plot:#110c1a; --backgate:#ff922b;
   --danger:#ff8a6b;
   --d0:#5a6cf0; --d1:#36b9e8; --d2:#52d073; --d3:#f5cf45; --d4:#ff5a3a;
   --cc-g1:#45d29a; --cc-s:#f2bd4b; --cc-g2:#7aa2ff; --cc-sub:#a99fc2;
@@ -54,7 +54,7 @@
 :root[data-theme="dark"]{
   --bg:#24113b; --on-bg:#f3ecfc; --on-bg-muted:#b9a5d4;
   --surface:#1a1326; --surface-2:#150f20; --ink:#ebe5f4; --muted:#a093b5; --line:#33284a;
-  --accent:#b48cff; --accent-ink:#1a0b33; --accent-soft:#33235a; --gate:#f4f0fa; --sel:#ff8a6b; --plot:#110c1a;
+  --accent:#b48cff; --accent-ink:#1a0b33; --accent-soft:#33235a; --gate:#f4f0fa; --sel:#ff8a6b; --plot:#110c1a; --backgate:#ff922b;
   --danger:#ff8a6b;
   --d0:#5a6cf0; --d1:#36b9e8; --d2:#52d073; --d3:#f5cf45; --d4:#ff5a3a;
   --cc-g1:#45d29a; --cc-s:#f2bd4b; --cc-g2:#7aa2ff; --cc-sub:#a99fc2;
@@ -63,7 +63,7 @@
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-sans);font-size:14px;line-height:1.45}
-.app{max-width:1280px;margin:0 auto;padding-block:20px 40px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));display:flex;flex-direction:column;gap:16px}
+.app{max-width:1600px;margin:0 auto;padding-block:20px 40px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));display:flex;flex-direction:column;gap:16px}
 h1,h2{margin:0;text-wrap:balance}
 h1{color:var(--on-bg)}
 h2{font-size:15px;font-weight:600}
@@ -125,7 +125,10 @@ select{cursor:pointer}
 .axes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .axes .field:first-child{grid-column:1/-1}
 .axes .field:first-child select{max-width:calc(50% - 4px)}
-.phead .pname{margin-right:auto}
+.phead .pname{order:-2}
+.phead .premove{order:-1;margin-right:auto;width:26px;height:26px;font-size:16px}
+.phead{row-gap:8px}
+.nocase{text-transform:none}
 @media (max-width:560px){.axes{grid-template-columns:minmax(0,1fr)}}
 .field{display:flex;flex-direction:column;gap:3px;min-width:0}
 .field label{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
@@ -136,6 +139,12 @@ select{cursor:pointer}
 .plotbox{position:relative;width:100%;aspect-ratio:1/1;max-width:100%}
 .plotbox canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 .plotbox canvas.over{touch-action:pan-y}
+.mrange{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:4px 10px}
+.mrange label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted)}
+.mrange input{font:inherit;font-size:14px;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);min-width:0}
+#rangeErr:empty{display:none}
+.zoomreset{position:absolute;top:18px;right:20px;font:inherit;font-size:12px;font-weight:600;padding:4px 10px;border-radius:999px;border:1px solid var(--accent);background:var(--surface);color:var(--accent);cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.zoomreset:hover{background:var(--accent);color:#fff}
 .plotbox.drawing canvas.over{cursor:crosshair;touch-action:none}
 .plotbox canvas.over:focus{outline:none}
 .plotbox canvas.over:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
@@ -160,9 +169,69 @@ td{padding:5px 10px;border-bottom:1px solid var(--line);text-align:right;font-fa
 .del{font:inherit;font-size:12px;background:none;border:0;color:var(--danger);cursor:pointer;padding:2px 4px}
 .del:hover{text-decoration:underline}
 .note{margin:10px 0 0;color:var(--muted);font-size:12.5px;max-width:80ch}
-details.kw summary{cursor:pointer;font-weight:600;font-size:15px}
-details.kw summary span{color:var(--muted);font-weight:400;font-size:13px}
-details.kw .tablewrap{max-height:360px;overflow:auto;margin-top:10px}
+.kw .tablewrap{max-height:420px;overflow:auto}
+/* workspace: sidebar + main area */
+.work{display:grid;grid-template-columns:268px minmax(0,1fr);gap:16px;align-items:start}
+.mainarea{display:flex;flex-direction:column;gap:16px;min-width:0}
+.side{position:sticky;top:12px;display:flex;flex-direction:column;gap:12px;max-height:calc(100vh - 24px);overflow:auto;overscroll-behavior:contain;border-radius:var(--r)}
+.sidecard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px}
+.sidehead{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:8px}
+.sidecount{font-size:12px;color:var(--muted);font-family:var(--f-mono)}
+.sidenote{margin:8px 0 0;font-size:12px;color:var(--muted)}
+.samplelist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:1px;max-height:300px;overflow:auto}
+.sitem{width:100%;text-align:left;font:inherit;font-size:13px;background:none;border:0;border-radius:6px;padding:6px 8px;color:var(--ink);cursor:pointer;display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.sitem:hover{background:var(--surface-2)}
+.sitem[aria-current="true"]{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.sitem .sname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.sitem .sn{flex:0 0 auto;font-family:var(--f-mono);font-size:11px;color:var(--muted);font-weight:400}
+.volrow{display:flex;align-items:center;flex-wrap:wrap;gap:6px 8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.volrow label{font-size:12px;color:var(--muted);font-weight:600}
+.volin{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--muted)}
+.volin input{width:76px}
+.volnote{font-size:11px;color:var(--muted)}
+.gatetree{display:flex;flex-direction:column;gap:1px;font-size:13px}
+.trow{display:flex;align-items:center;gap:2px;border-radius:6px;padding:2px 2px 2px 0;cursor:pointer;min-width:0}
+.trow:hover{background:var(--surface-2)}
+.trow[aria-selected="true"]{background:var(--accent-soft)}
+.trow:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.tcaret{flex:0 0 18px;height:18px;display:grid;place-items:center;font-size:10px;color:var(--muted);background:none;border:0;padding:0;cursor:pointer;border-radius:4px}
+.tcaret:hover{color:var(--ink)}
+.tcaret.leaf{visibility:hidden}
+.tname{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.trow[aria-selected="true"] .tname{font-weight:600;color:var(--accent)}
+.tnum{flex:0 0 auto;font-family:var(--f-mono);font-size:11px;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+.tpct{flex:0 0 46px;font-family:var(--f-mono);font-size:11px;color:var(--ink);text-align:right;font-variant-numeric:tabular-nums}
+.tshow{flex:0 0 24px;height:22px;display:grid;place-items:center;border:0;background:none;color:var(--muted);border-radius:4px;cursor:pointer;padding:0}
+.tshow:hover{background:var(--accent);color:var(--accent-ink)}
+.tshow[aria-pressed="true"]{color:var(--accent)}
+.keys summary{cursor:pointer;font-weight:600;font-size:13px}
+.keylist{display:grid;grid-template-columns:1fr;gap:4px;margin:10px 0 0;font-size:12.5px}
+.keylist div{display:flex;gap:8px;align-items:baseline}
+.keylist dt{flex:0 0 78px;text-align:right}
+.keylist dd{margin:0;color:var(--muted)}
+kbd{font-family:var(--f-mono);font-size:11px;background:var(--surface-2);border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 5px}
+.panel.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.panel.active .pname::after{content:"active";margin-left:8px;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);background:var(--accent-soft);padding:2px 6px;border-radius:999px;vertical-align:2px}
+/* analysis tabs */
+.tabs{display:flex;gap:2px;flex-wrap:wrap;margin-bottom:-16px;padding-left:4px}
+.tabs button{font:inherit;font-size:13px;font-weight:600;padding:9px 14px;border:1px solid transparent;border-bottom:0;border-radius:var(--r) var(--r) 0 0;background:color-mix(in srgb, var(--on-bg) 12%, transparent);color:var(--on-bg);cursor:pointer}
+.tabs button:hover{background:color-mix(in srgb, var(--on-bg) 22%, transparent)}
+.tabs button[aria-selected="true"]{background:var(--surface);color:var(--ink);border-color:var(--line)}
+.tabs button:focus-visible{outline:2px solid var(--on-bg);outline-offset:-3px}
+.tabpane>.card{border-top-left-radius:0}
+.iconbtn{padding:7px 9px}
+.iconbtn .i-sun{display:none}
+.iconbtn.dark .i-sun{display:inline}
+.iconbtn.dark .i-moon{display:none}
+.restore{align-items:center}
+.restore .btnrow{margin:0;display:flex;gap:8px;flex-wrap:wrap}
+.sumnote{color:var(--muted);font-weight:400;font-size:13px}
+@media (max-width:1000px){
+  .work{grid-template-columns:minmax(0,1fr)}
+  .side{position:static;max-height:none;overflow:visible;order:2}
+  .samplelist{max-height:220px}
+}
+@media (max-width:560px){.tabs button{padding:8px 10px;font-size:12.5px}}
 #kwTable td{text-align:left;white-space:normal;word-break:break-word}
 #kwTable td:first-child{white-space:nowrap;color:var(--muted);width:1%}
 .copyfall{width:100%;min-height:120px;margin-top:10px;font-family:var(--f-mono);font-size:12px;color:var(--ink);background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r);padding:8px}
@@ -272,6 +341,10 @@ table.labels input{width:min(260px,100%)}
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 14 5-5-5-5"></path><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"></path></svg>
         </button>
       </div>
+      <button type="button" id="themeBtn" class="btn hbtn iconbtn" aria-label="Switch to dark theme" title="Switch theme">
+        <svg class="i-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path></svg>
+        <svg class="i-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"></circle><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"></path></svg>
+      </button>
       <div class="load">
         <label class="btn primary" for="file">Open FCS files</label>
         <button type="button" id="exportBtn" class="btn hbtn" aria-haspopup="menu">Export <span aria-hidden="true">▾</span></button>
@@ -282,6 +355,46 @@ table.labels input{width:min(260px,100%)}
     </div>
   </header>
 
+
+
+
+
+
+
+
+
+  <div id="restoreBar" class="msg ok restore" role="status" hidden><span id="restoreText"></span><span class="btnrow"><button type="button" id="restoreBtn" class="btn primary">Restore</button><button type="button" id="restoreNo" class="btn">Dismiss</button></span></div>
+  <div class="work">
+  <aside class="side" aria-label="Samples and gates">
+    <section class="sidecard">
+      <div class="sidehead"><h2>Samples</h2><span id="sampleCount" class="sidecount"></span></div>
+      <ul id="sampleList" class="samplelist"></ul>
+      <div class="volrow">
+        <label for="volInput">Volume analysed</label>
+        <span class="volin"><input id="volInput" type="text" inputmode="decimal" autocomplete="off" aria-describedby="volHelp"><span>µL</span></span>
+        <span id="volNote" class="volnote"></span>
+      </div>
+      <p id="volHelp" class="sidenote">Gives events per µL in the table. Read from the file's $VOL keyword when it has one.</p>
+    </section>
+    <section class="sidecard">
+      <div class="sidehead"><h2>Gates</h2><span class="sidecount" id="gateCount"></span></div>
+      <div id="gateTree" class="gatetree" role="tree" aria-label="Gate hierarchy"></div>
+      <p class="sidenote" id="treeHint"></p>
+    </section>
+    <details class="sidecard keys">
+      <summary>Keyboard shortcuts</summary>
+      <dl class="keylist">
+        <div><dt><kbd>V</kbd></dt><dd>Select</dd></div><div><dt><kbd>R</kbd></dt><dd>Rectangle</dd></div>
+        <div><dt><kbd>P</kbd></dt><dd>Polygon</dd></div><div><dt><kbd>Q</kbd></dt><dd>Quadrant</dd></div>
+        <div><dt><kbd>G</kbd></dt><dd>Range (histograms)</dd></div><div><dt><kbd>Z</kbd></dt><dd>Zoom</dd></div>
+        <div><dt><kbd>0</kbd></dt><dd>Reset zoom</dd></div><div><dt><kbd>H</kbd></dt><dd>Dot plot / histogram</dd></div>
+        <div><dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>Previous / next sample</dd></div><div><dt><kbd>Del</kbd></dt><dd>Delete selected gate</dd></div>
+        <div><dt><kbd>Esc</kbd></dt><dd>Cancel drawing</dd></div><div><dt><kbd>Ctrl</kbd> <kbd>Z</kbd></dt><dd>Undo (add Shift to redo)</dd></div>
+      </dl>
+      <p class="sidenote">Tool keys act on the active plot (outlined). Click a plot to make it active.</p>
+    </details>
+  </aside>
+  <div class="mainarea">
   <section class="samplebar" aria-label="Sample">
     <label for="sampleSel">Sample</label>
     <div class="stepper">
@@ -292,15 +405,35 @@ table.labels input{width:min(260px,100%)}
     <span id="exampleTag" class="tag" hidden>Example data</span>
     <dl class="meta" id="meta"></dl>
   </section>
-
   <div id="msg" class="msg" role="status" hidden><span id="msgText"></span><button type="button" id="msgClose" class="msgclose" aria-label="Dismiss message">×</button></div>
-
   <main class="plots" id="plots"></main>
   <div class="plotbar">
     <button type="button" id="addPlot" class="btn addplot">+ Add plot</button>
     <span class="hint2" id="plotHint">New plots show the selected gate's population.</span>
   </div>
-
+      <div class="tabs" role="tablist" aria-label="Analysis">
+        <button type="button" role="tab" id="tab-pop" aria-controls="pane-pop" aria-selected="false" tabindex="-1">Populations</button>
+        <button type="button" role="tab" id="tab-comp" aria-controls="pane-comp" aria-selected="false" tabindex="-1">Compensation</button>
+        <button type="button" role="tab" id="tab-cc" aria-controls="pane-cc" aria-selected="false" tabindex="-1">Cell cycle</button>
+        <button type="button" role="tab" id="tab-names" aria-controls="pane-names" aria-selected="false" tabindex="-1">Channel names</button>
+        <button type="button" role="tab" id="tab-kw" aria-controls="pane-kw" aria-selected="false" tabindex="-1">File keywords</button>
+      </div>
+      <div class="tabpane" role="tabpanel" id="pane-pop" aria-labelledby="tab-pop" hidden>
+  <section class="card">
+    <div class="cardhead">
+      <h2>Populations</h2>
+      <div class="ctrl">
+        <label for="statSel">Statistics for</label>
+        <select id="statSel"></select>
+        <button id="copyBtn" class="btn" type="button">Copy table</button>
+      </div>
+    </div>
+    <div class="tablewrap"><table id="popTable"></table></div>
+    <div id="copyFallback" hidden><p class="note">Your browser blocked automatic copying. The table is selected below: press Ctrl+C (or ⌘C) to copy it.</p><textarea id="copyText" class="copyfall" aria-label="Table text to copy"></textarea></div>
+    <p class="note">Gates apply to every loaded sample, matched by channel name, so you can switch tubes and compare. Right-click an axis title (or click it with the Select tool) to change its channel or scale, or to rename the channel. Right-click inside a plot to copy it for Word, PowerPoint or Excel. Click a gate to select it. Drag inside it to move it, or drag its handles to resize it: corners and sides for rectangles, corners for polygons, ends for histogram ranges. Double-click a polygon's edge to add a corner, or a corner to remove it. A quadrant moves as one: drag its centre, either line, or anywhere inside it. Press Esc during a drag to undo it, or Delete to remove the selected gate. To draw a polygon, click to add corners, then double-click or click the first corner to close.</p>
+  </section>
+      </div>
+      <div class="tabpane" role="tabpanel" id="pane-comp" aria-labelledby="tab-comp" hidden>
   <section class="card" id="compCard">
     <div class="cardhead">
       <h2>Compensation</h2>
@@ -335,7 +468,8 @@ table.labels input{width:min(260px,100%)}
     </div>
     <p class="note">While compensation is on, plots, gates and statistics use compensated values, and those axes are labelled Comp-. Compensation can push events below zero: switch fluorescence axes to Biexponential to see them instead of piling up on the log axis.</p>
   </section>
-
+      </div>
+      <div class="tabpane" role="tabpanel" id="pane-cc" aria-labelledby="tab-cc" hidden>
   <section class="card" id="ccCard">
     <div class="cardhead">
       <h2>Cell cycle</h2>
@@ -352,31 +486,22 @@ table.labels input{width:min(260px,100%)}
     <p class="sub ccintro">Auto-gating first keeps single cells: clumps of two cells have twice the DNA area but not twice the height. It then fits the DNA histogram with a G0/G1 peak, a G2/M peak at about twice the DNA, and S phase between them. It adds gates and two plots so you can check the result. To try it, pick <strong>Example: cell cycle, untreated</strong> or <strong>G2/M arrest</strong> in the sample list.</p>
     <div id="ccOut"></div>
   </section>
-
-  <section class="card">
-    <div class="cardhead">
-      <h2>Populations</h2>
-      <div class="ctrl">
-        <label for="statSel">Statistics for</label>
-        <select id="statSel"></select>
-        <button id="copyBtn" class="btn" type="button">Copy table</button>
       </div>
-    </div>
-    <div class="tablewrap"><table id="popTable"></table></div>
-    <div id="copyFallback" hidden><p class="note">Your browser blocked automatic copying. The table is selected below: press Ctrl+C (or ⌘C) to copy it.</p><textarea id="copyText" class="copyfall" aria-label="Table text to copy"></textarea></div>
-    <p class="note">Gates apply to every loaded sample, matched by channel name, so you can switch tubes and compare. Right-click an axis title (or click it with the Select tool) to change its channel or scale, or to rename the channel. Right-click inside a plot to copy it for Word, PowerPoint or Excel. Click a gate to select it. Drag inside it to move it, or drag its handles to resize it: corners and sides for rectangles, corners for polygons, ends for histogram ranges. Double-click a polygon's edge to add a corner, or a corner to remove it. A quadrant moves as one: drag its centre, either line, or anywhere inside it. Press Esc during a drag to undo it, or Delete to remove the selected gate. To draw a polygon, click to add corners, then double-click or click the first corner to close.</p>
-  </section>
-
-  <details class="card" id="labelsCard">
-    <summary>Channel names <span class="sumnote">rename channels, for example FL1-A to CD45 RB545</span></summary>
+      <div class="tabpane" role="tabpanel" id="pane-names" aria-labelledby="tab-names" hidden>
+  <section class="card" id="labelsCard">
+    <div class="cardhead"><h2>Channel names</h2></div>
     <p class="sub labelsintro">Your labels appear on axes, menus, tables and exports. The channel itself (FL1-A) stays the same, so gates still match across files. You can also right-click an axis title and choose Rename.</p>
     <div class="tablewrap"><table id="labelsTable" class="labels"></table></div>
-  </details>
-
-  <details class="card kw">
-    <summary>File keywords <span id="kwCount"></span></summary>
+  </section>
+      </div>
+      <div class="tabpane" role="tabpanel" id="pane-kw" aria-labelledby="tab-kw" hidden>
+  <section class="card kw" id="kwCard">
+    <div class="cardhead"><h2>File keywords <span id="kwCount" class="sumnote"></span></h2></div>
     <div class="tablewrap"><table id="kwTable"></table></div>
-  </details>
+  </section>
+      </div>
+  </div>
+  </div>
 
   <p class="privacy">Files are read inside your browser. Nothing is uploaded.</p>
 </div>
@@ -534,7 +659,18 @@ function makeScale(type, c){
 }
 // a gate edge drawn on the plot border extends to infinity, so events pushed off-scale (e.g. by compensation) stay inside
 const EDGE = 1e30;
-const edgeInv = (sc, u) => u <= 0.002 ? -EDGE : u >= 0.998 ? EDGE : sc.inv(u);
+// on a zoomed axis the plot border is not the end of the data, so edges there stay finite
+const edgeInv = (sc, u) => u <= 0.002 && !sc.zoomLo ? -EDGE : u >= 0.998 && !sc.zoomHi ? EDGE : sc.inv(u);
+// A zoomed view of a scale: r = {lo, hi} in data units
+function zoomScale(base, r){
+  if (!r) return base;
+  const u0 = base.fwd(r.lo), u1 = base.fwd(r.hi), zk = u1 - u0;
+  if (!(zk > 1e-6) || !Number.isFinite(zk)) return base;
+  return {...base, base, u0, u1, zk, lo: r.lo, hi: r.hi, zoomLo: u0 > 0.0005, zoomHi: u1 < 0.9995,
+    fwd: v => (base.fwd(v) - u0) / zk, inv: u => base.inv(u0 + u * zk)};
+}
+// "1.5M", "20k", "-300" -> number
+const parseSI = t => { const m = String(t).trim().replace(/,/g, '').match(/^(-?[\d.]+(?:e[-+]?\d+)?)\s*([kKmMgG]?)$/); if (!m) return NaN; return parseFloat(m[1]) * ({'': 1, k: 1e3, K: 1e3, m: 1e6, M: 1e6, g: 1e9, G: 1e9})[m[2]]; };
 const cu = u => u < -0.05 ? -0.05 : u > 1.05 ? 1.05 : u;
 function niceStep(span, target){
   const raw = span / target, p = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / p;
@@ -551,11 +687,18 @@ function fmtSI(v){
   return (+v.toPrecision(3)).toString();
 }
 function ticks(sc){
+  if (sc.base && sc.type !== 'lin'){
+    // zoomed log / biexponential axis: the base axis's ticks, moved into the zoomed window
+    let t = ticks(sc.base).map(x => ({...x, u: (x.u - sc.u0) / sc.zk})).filter(x => x.u >= -1e-6 && x.u <= 1 + 1e-6);
+    if (t.filter(x => x.major).length < 2) t = t.map(x => x.major || x.v === undefined ? x : {...x, major: true, label: fmtSI(x.v)});
+    if (t.filter(x => x.major).length < 2){ t = []; for (let k = 0; k <= 4; k++){ const u = k / 4; t.push({u, label: fmtSI(sc.inv(u)), major: true}); } }
+    return t;
+  }
   const out = [];
   if (sc.type === 'log'){
     for (let k = Math.ceil(sc.a); k <= Math.floor(sc.b); k++){
       out.push({u: sc.fwd(10 ** k), exp: k, major: true});
-      for (let m = 2; m < 10; m++){ const v = m * 10 ** k; if (v < sc.hi) out.push({u: sc.fwd(v), major: false}); }
+      for (let m = 2; m < 10; m++){ const v = m * 10 ** k; if (v < sc.hi) out.push({u: sc.fwd(v), major: false, v}); }
     }
   } else if (sc.type === 'asinh'){
     out.push({u: sc.fwd(0), label: '0', major: true});
@@ -578,6 +721,7 @@ const chOf = (s, name) => s && name in s.idx ? s.ch[s.idx[name]] : null;
 const gateById = id => state.gates.find(g => g.id === id);
 const chLabel = (s, name) => (s.compChs && s.compChs.has(name) ? 'Comp-' : '') + chOf(s, name).label;
 state.labels = {};
+state.volumes = {}; // sample name -> volume analysed, µL (overrides $VOL)
 state.comp = {on: false, chs: [], S: {}, ctrl: {}, unst: null, pop: 'auto'};
 // Undo/redo history: whole-analysis snapshots (gates, compensation, cell-cycle set-up, plot layout)
 const hist = {undo: [], redo: [], cur: null, sig: '', busy: 0};
@@ -616,8 +760,12 @@ function gateMask(s, g, parent){
   }
   return out;
 }
+const maskKey = () => compKey() + '#' + JSON.stringify(state.gates);
+// masks for a sample that may not be on screen (overlays, reports, absolute counts)
+function masksFor(s){ applyComp(s); if (s.maskKey !== maskKey()) computeMasks(s); return s; }
 function computeMasks(s){
   if (!s) return;
+  s.maskKey = maskKey();
   s.masks = new Map(); s.counts = new Map();
   const root = rootMask(s); s.counts.set('all', s.n);
   for (const g of state.gates){
@@ -659,9 +807,42 @@ function buildLUT(){
   }
   return lut;
 }
+function greyLUT(){
+  // light plots: pale grey to near black; dark plots: dim grey to near white
+  const dark = (hexRGB(tok('--plot') || '#ffffff').reduce((a, b) => a + b, 0)) < 384, lut = new Uint8Array(256 * 3);
+  for (let i = 0; i < 256; i++){ const g = Math.round(dark ? 95 + i / 255 * 150 : 185 - i / 255 * 165); lut[i*3] = lut[i*3+1] = lut[i*3+2] = g; }
+  return lut;
+}
 function palette(){
   return palCache || (palCache = {ink: tok('--ink'), muted: tok('--muted'), line: tok('--line'), plot: tok('--plot'), accent: tok('--accent'),
-    gate: tok('--gate'), sel: tok('--sel'), surface: tok('--surface'), fSans: tok('--f-sans'), fMono: tok('--f-mono'), lut: buildLUT()});
+    gate: tok('--gate'), sel: tok('--sel'), surface: tok('--surface'), fSans: tok('--f-sans'), fMono: tok('--f-mono'), lut: buildLUT(), grey: greyLUT(),
+    bg: tok('--backgate') || '#ff6a00'});
+}
+// colours for overlaid samples, distinct from the purple of the current sample
+const OVERLAY_COLS = ['#e8590c', '#1c7ed6', '#2b8a3e', '#c2255c', '#d49b00', '#0c8599', '#5c940d', '#868e96'];
+const PLOT_STYLES = [['density', 'Density (pseudocolour)'], ['contour', 'Contour'], ['dots', 'Dots'], ['grey', 'Greyscale density']];
+// marching squares: line segments where the grid f (w × h) crosses level l, in grid units
+const MS = [[], [[3, 2]], [[2, 1]], [[3, 1]], [[0, 1]], [[3, 0], [2, 1]], [[0, 2]], [[3, 0]], [[3, 0]], [[0, 2]], [[3, 2], [0, 1]], [[0, 1]], [[3, 1]], [[2, 1]], [[3, 2]], []];
+function contourSegs(f, w, h, l){
+  const out = [];
+  for (let j = 0; j < h - 1; j++) for (let i = 0; i < w - 1; i++){
+    const a = f[j*w+i], b = f[j*w+i+1], c = f[(j+1)*w+i+1], d = f[(j+1)*w+i];
+    const code = (a > l) << 3 | (b > l) << 2 | (c > l) << 1 | (d > l);
+    if (code === 0 || code === 15) continue;
+    const pt = e => e === 0 ? [i + (l - a) / (b - a), j] : e === 1 ? [i + 1, j + (l - b) / (c - b)] : e === 2 ? [i + (l - d) / (c - d), j + 1] : [i, j + (l - a) / (d - a)];
+    for (const [e1, e2] of MS[code]) out.push(pt(e1), pt(e2));
+  }
+  return out;
+}
+// separable [1 4 6 4 1] smoothing, used for contours
+function smoothGrid(src, w, h, passes){
+  let a = Float32Array.from(src), b = new Float32Array(w * h);
+  const K = [1, 4, 6, 4, 1];
+  for (let p = 0; p < passes; p++){
+    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++){ let t = 0, n = 0; for (let k = -2; k <= 2; k++){ const x = i + k; if (x >= 0 && x < w){ t += a[j*w+x] * K[k+2]; n += K[k+2]; } } b[j*w+i] = t / n; }
+    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++){ let t = 0, n = 0; for (let k = -2; k <= 2; k++){ const y = j + k; if (y >= 0 && y < h){ t += b[y*w+i] * K[k+2]; n += K[k+2]; } } a[j*w+i] = t / n; }
+  }
+  return a;
 }
 
 /* ---------------- Plot panel ---------------- */
@@ -687,7 +868,8 @@ class Panel {
           <button type="button" data-tool="rect" title="Drag to draw a rectangle gate">Rectangle</button>
           <button type="button" data-tool="poly" title="Click corners, double-click to finish">Polygon</button>
           <button type="button" data-tool="quad" title="Click to place a quadrant: four gates split by one vertical and one horizontal line">Quadrant</button>
-          <button type="button" data-tool="range" title="Drag across the histogram to draw a range gate">Range</button>
+          <button type="button" data-tool="range" title="Drag across the histogram to draw a range gate (G)">Range</button>
+          <button type="button" data-tool="zoom" title="Drag to zoom in (Z). Double-click with Zoom to reset">Zoom</button>
         </div>
         <button type="button" class="premove" title="Remove this plot" aria-label="Remove plot ${key}">×</button>
       </div>
@@ -696,7 +878,7 @@ class Panel {
         <div class="field"><label for="${key}-x">X axis</label><div class="pair"><select id="${key}-x"></select><select id="${key}-xs" aria-label="Plot ${key} X scale">${SCALE_OPTS}</select></div></div>
         <div class="field yfield"><label for="${key}-y">Y axis</label><div class="pair"><select id="${key}-y"></select><select id="${key}-ys" aria-label="Plot ${key} Y scale">${SCALE_OPTS}</select></div></div>
       </div>
-      <div class="plotbox"><canvas class="base"></canvas><canvas class="over" role="img" tabindex="0" aria-label="Plot ${key}. Draw gates here."></canvas></div>
+      <div class="plotbox"><canvas class="base"></canvas><canvas class="over" role="img" tabindex="0" aria-label="Plot ${key}. Draw gates here."></canvas><button type="button" class="zoomreset" hidden title="Show the full axes again">Reset zoom</button></div>
       <div class="pfoot"><span class="count"></span><span class="readout"></span></div>`;
     const q = s => el.querySelector(s);
     this.popSel = q(`#${key}-pop`); this.xSel = q(`#${key}-x`); this.ySel = q(`#${key}-y`);
@@ -709,15 +891,20 @@ class Panel {
     this.typeBtns.forEach(b => b.addEventListener('click', () => this.setType(b.dataset.ptype)));
     this.toolBtns.forEach(b => b.addEventListener('click', () => this.setTool(b.dataset.tool)));
     this.popSel.addEventListener('change', () => { this.pop = this.popSel.value === 'all' ? 'all' : +this.popSel.value; this.draft = null; this.draw(); markChange(); });
-    this.xSel.addEventListener('change', () => { this.xn = this.xSel.value; this.xs = defaultScale(chOf(cur(), this.xn)); this.syncControls(); this.draft = null; this.draw(); markChange(); });
+    this.xSel.addEventListener('change', () => { this.xn = this.xSel.value; this.xs = defaultScale(chOf(cur(), this.xn)); this.xr = null; this.syncControls(); this.draft = null; this.draw(); markChange(); });
     this.ySel.addEventListener('change', () => {
-      this.yn = this.ySel.value; this.ys = defaultScale(chOf(cur(), this.yn));
+      this.yn = this.ySel.value; this.ys = defaultScale(chOf(cur(), this.yn)); this.yr = null;
       this.draft = null; this.syncControls(); this.draw(); markChange();
     });
-    this.xsSel.addEventListener('change', () => { this.xs = this.xsSel.value; this.draft = null; this.draw(); markChange(); });
-    this.ysSel.addEventListener('change', () => { this.ys = this.ysSel.value; this.draft = null; this.draw(); markChange(); });
+    this.xsSel.addEventListener('change', () => { this.xs = this.xsSel.value; this.xr = null; this.draft = null; this.syncZoom(); this.draw(); markChange(); });
+    this.ysSel.addEventListener('change', () => { this.ys = this.ysSel.value; this.yr = null; this.draft = null; this.syncZoom(); this.draw(); markChange(); });
     this.ro = new ResizeObserver(() => this.resize()); this.ro.observe(this.box);
     this.removeBtn = q('.premove');
+    this.zoomBtn = q('.zoomreset');
+    el.addEventListener('pointerdown', () => setActive(this));
+    el.addEventListener('focusin', () => setActive(this));
+    this.zoomBtn.addEventListener('click', () => this.resetZoom());
+    this.xr = null; this.yr = null; this.style = 'density'; this.backgate = null; this.overlay = []; this.norm = false;
     this.removeBtn.addEventListener('click', () => removePanel(this));
     this.over.addEventListener('pointerdown', e => this.onDown(e));
     this.over.addEventListener('pointermove', e => this.onMove(e));
@@ -743,12 +930,12 @@ class Panel {
   }
   setChannel(axis, name){
     const s = cur(); if (!s || !(name in s.idx)) return;
-    if (axis === 'x'){ this.xn = name; this.xs = defaultScale(chOf(s, name)); }
-    else { if (this.isHist) this.y2 = name; this.yn = name; this.ys = defaultScale(chOf(s, name)); }
+    if (axis === 'x'){ this.xn = name; this.xs = defaultScale(chOf(s, name)); this.xr = null; }
+    else { if (this.isHist) this.y2 = name; this.yn = name; this.ys = defaultScale(chOf(s, name)); this.yr = null; }
     this.draft = null; this.setTool('select'); this.syncControls(); this.draw(); markChange();
   }
   setScale(axis, type){
-    if (axis === 'x') this.xs = type; else if (!this.isHist) this.ys = type;
+    if (axis === 'x'){ this.xs = type; this.xr = null; } else if (!this.isHist){ this.ys = type; this.yr = null; }
     this.draft = null; this.syncControls(); this.draw(); markChange();
   }
   setType(t){
@@ -805,10 +992,17 @@ class Panel {
   }
   geom(){ const S = this.size; return {x0: M.l, y0: M.t, w: Math.max(10, S - M.l - M.r), h: Math.max(10, S - M.t - M.b)}; }
   scales(s){
-    const sx = makeScale(this.xs, chOf(s, this.xn));
-    const sy = this.isHist ? null : makeScale(this.ys, chOf(s, this.yn));
+    const sx = zoomScale(makeScale(this.xs, chOf(s, this.xn)), this.xr);
+    const sy = this.isHist ? null : zoomScale(makeScale(this.ys, chOf(s, this.yn)), this.yr);
     return {sx, sy};
   }
+  get zoomed(){ return !!(this.xr || (!this.isHist && this.yr)); }
+  setRange(axis, r){
+    if (axis === 'x') this.xr = r; else this.yr = r;
+    this.draft = null; this.syncZoom(); this.draw(); markChange();
+  }
+  resetZoom(){ this.xr = null; this.yr = null; this.syncZoom(); this.draw(); markChange(); }
+  syncZoom(){ this.zoomBtn.hidden = !this.zoomed; }
   draw(){
     const s = cur(); if (!this.size) return;
     const ctx = this.base.getContext('2d'); ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
@@ -820,43 +1014,115 @@ class Panel {
     const {sx, sy} = this.scales(s);
     this.sx = sx; this.sy = sy;
     const shown = popCount(s, this.pop);
+    if (this.backgate != null && !gateById(this.backgate)) this.backgate = null;
     if (this.isHist){
-      const NB = Math.max(64, Math.min(256, Math.floor(G.w / 2))), bins = new Float64Array(NB), U = getU(s, xi, this.xs);
-      for (let i = 0; i < s.n; i++) if (mask[i]) bins[Math.min(NB - 1, (U[i] * NB) | 0)]++;
-      const sm = bins;
-      let mx = 0; for (const v of sm) if (v > mx) mx = v;
+      const NB = Math.max(64, Math.min(256, Math.floor(G.w / 2))), U = getU(s, xi, this.xs);
+      const zx = sx.base ? sx : null;
+      const binU = (m, extra) => {
+        const bins = new Float64Array(NB);
+        for (let i = 0; i < s.n; i++){
+          if (!m[i] || (extra && !extra[i])) continue;
+          let u = U[i]; if (zx){ u = (u - zx.u0) / zx.zk; if (u < 0 || u > 1) continue; }
+          bins[Math.min(NB - 1, (u * NB) | 0)]++;
+        }
+        return bins;
+      };
+      // other samples are put on this plot's axis through their raw values, since each sample's own scale can differ
+      const binOther = (s2) => {
+        const bins = new Float64Array(NB), i2 = s2.idx[this.xn]; if (i2 === undefined) return null;
+        masksFor(s2); const m = popMask(s2, this.pop), X = s2.cols[i2];
+        for (let i = 0; i < s2.n; i++){
+          if (!m[i]) continue;
+          let u = sx.fwd(X[i]);
+          if (!(u >= 0)) { if (zx || !(u < 0)) continue; u = 0; }
+          if (u > 1){ if (zx) continue; u = 1; }
+          bins[Math.min(NB - 1, (u * NB) | 0)]++;
+        }
+        return bins;
+      };
+      const main = binU(mask), curves = [];
+      const others = (this.overlay || []).map(n => state.samples.find(x => x.name === n)).filter(x => x && x !== s);
+      others.forEach((s2, k) => { const b = binOther(s2); if (b) curves.push({bins: b, col: OVERLAY_COLS[k % OVERLAY_COLS.length], name: s2.name}); });
+      const bg = this.backgate != null ? binU(mask, popMask(s, this.backgate)) : null;
+      const peak = b => { let m = 0; for (const v of b) if (v > m) m = v; return m || 1; };
+      const norm = this.norm && curves.length > 0, mainPeak = peak(main);
+      const f = b => norm ? 100 / peak(b) : 1;
+      let mx = mainPeak * f(main);
+      if (!norm) for (const c of curves) mx = Math.max(mx, peak(c.bins));
+      if (norm) mx = 100;
       const ymax = Math.max(1, mx * 1.08);
-      this.hmax = ymax; this.hNB = NB;
+      this.hmax = ymax; this.hNB = NB; this.hscale = f(main);
+      const line = (b, k) => { ctx.beginPath(); ctx.moveTo(G.x0, G.y0 + G.h); for (let i = 0; i < NB; i++) ctx.lineTo(G.x0 + (i + 0.5) / NB * G.w, G.y0 + G.h - b[i] * k / ymax * G.h); ctx.lineTo(G.x0 + G.w, G.y0 + G.h); };
       ctx.save(); ctx.beginPath(); ctx.rect(G.x0, G.y0, G.w, G.h); ctx.clip();
-      ctx.beginPath(); ctx.moveTo(G.x0, G.y0 + G.h);
-      for (let i = 0; i < NB; i++){ const x = G.x0 + (i + 0.5) / NB * G.w, y = G.y0 + G.h - sm[i] / ymax * G.h; ctx.lineTo(x, y); }
-      ctx.lineTo(G.x0 + G.w, G.y0 + G.h); ctx.closePath();
-      ctx.globalAlpha = 0.22; ctx.fillStyle = pal.accent; ctx.fill(); ctx.globalAlpha = 1;
+      line(main, f(main)); ctx.closePath();
+      ctx.globalAlpha = bg ? 0.12 : 0.22; ctx.fillStyle = pal.accent; ctx.fill(); ctx.globalAlpha = 1;
       ctx.lineWidth = 1.5; ctx.strokeStyle = pal.accent; ctx.stroke();
+      if (bg){ line(bg, f(main)); ctx.closePath(); ctx.globalAlpha = 0.45; ctx.fillStyle = pal.bg; ctx.fill(); ctx.globalAlpha = 1; ctx.strokeStyle = pal.bg; ctx.lineWidth = 1.5; ctx.stroke(); }
+      for (const c of curves){ line(c.bins, f(c.bins)); ctx.strokeStyle = c.col; ctx.lineWidth = 1.75; ctx.stroke(); }
       ctx.restore();
       this.axisX(ctx, sx, G, pal, chLabel(s, this.xn));
-      this.axisYCount(ctx, ymax, G, pal);
+      this.axisYCount(ctx, ymax, G, pal, norm ? '% of max' : 'Count');
+      const legend = [];
+      if (curves.length) legend.push({col: pal.accent, name: s.name}, ...curves);
+      if (bg) legend.push({col: pal.bg, name: 'Backgate: ' + popName(this.backgate), fill: true});
+      this.drawLegend(ctx, G, pal, legend);
     } else {
-      const yi = s.idx[this.yn], U = getU(s, xi, this.xs), V = getU(s, yi, this.ys);
-      const gw = Math.max(1, Math.floor(G.w / 2)), gh = Math.max(1, Math.floor(G.h / 2)), cnt = new Uint32Array(gw * gh);
-      for (let i = 0; i < s.n; i++){
-        if (!mask[i]) continue;
-        const bx = Math.min(gw - 1, (U[i] * gw) | 0), by = Math.min(gh - 1, ((1 - V[i]) * gh) | 0);
-        cnt[by * gw + bx]++;
-      }
+      const yi = s.idx[this.yn], U = getU(s, xi, this.xs), V = getU(s, yi, this.ys), zx = sx.base ? sx : null, zy = sy.base ? sy : null;
+      const style = this.style || 'density', cell = style === 'dots' ? 1 : 2;
+      const gw = Math.max(1, Math.floor(G.w / cell)), gh = Math.max(1, Math.floor(G.h / cell));
+      const bin = (extra) => {
+        const cnt = new Uint32Array(gw * gh);
+        for (let i = 0; i < s.n; i++){
+          if (!mask[i] || (extra && !extra[i])) continue;
+          let u = U[i], v = V[i];
+          if (zx){ u = (u - zx.u0) / zx.zk; if (u < 0 || u > 1) continue; }
+          if (zy){ v = (v - zy.u0) / zy.zk; if (v < 0 || v > 1) continue; }
+          cnt[Math.min(gh - 1, ((1 - v) * gh) | 0) * gw + Math.min(gw - 1, (u * gw) | 0)]++;
+        }
+        return cnt;
+      };
+      const cnt = bin(), bgCnt = this.backgate != null ? bin(popMask(s, this.backgate)) : null;
       let mx = 0; for (let i = 0; i < cnt.length; i++) if (cnt[i] > mx) mx = cnt[i];
       const off = this.off || (this.off = document.createElement('canvas'));
       if (off.width !== gw || off.height !== gh){ off.width = gw; off.height = gh; this.img = null; }
-      const octx = off.getContext('2d'), img = this.img || (this.img = octx.createImageData(gw, gh)), lm = Math.log(1 + mx) || 1, L = pal.lut;
-      img.data.fill(0);
-      for (let i = 0; i < cnt.length; i++){
-        if (!cnt[i]) continue;
-        const k = Math.min(255, Math.round(Math.log(1 + cnt[i]) / lm * 255)) * 3;
-        img.data[i*4] = L[k]; img.data[i*4+1] = L[k+1]; img.data[i*4+2] = L[k+2]; img.data[i*4+3] = 255;
+      const octx = off.getContext('2d'), img = this.img || (this.img = octx.createImageData(gw, gh)), lm = Math.log(1 + mx) || 1, D = img.data;
+      D.fill(0);
+      const put = (i, r, g, b) => { D[i*4] = r; D[i*4+1] = g; D[i*4+2] = b; D[i*4+3] = 255; };
+      const inkRGB = hexRGB(pal.ink.startsWith('#') ? pal.ink : '#333333'), mutedRGB = hexRGB(pal.muted.startsWith('#') ? pal.muted : '#777777');
+      let smooth = null, levels = [];
+      if (style === 'contour'){
+        smooth = smoothGrid(cnt, gw, gh, 2);
+        let sm = 0; for (const v of smooth) if (v > sm) sm = v;
+        const top = Math.log(1 + sm);
+        for (let k = 1; k <= 8; k++) levels.push(Math.exp(top * k / 9) - 1);
+        // events outside the lowest contour are shown as dots
+        for (let i = 0; i < cnt.length; i++) if (cnt[i] && smooth[i] < levels[0]) put(i, ...mutedRGB);
+      } else {
+        // backgating dims the plot to grey so the highlighted population stands out
+        const L = style === 'grey' || (bgCnt && style === 'density') ? pal.grey : pal.lut;
+        for (let i = 0; i < cnt.length; i++){
+          if (!cnt[i]) continue;
+          if (style === 'dots'){ put(i, ...(bgCnt ? mutedRGB : inkRGB)); continue; }
+          const k = Math.min(255, Math.round(Math.log(1 + cnt[i]) / lm * 255)) * 3;
+          put(i, L[k], L[k+1], L[k+2]);
+        }
       }
+      if (bgCnt){ const c = hexRGB(pal.bg); for (let i = 0; i < bgCnt.length; i++) if (bgCnt[i]) put(i, ...c); }
       octx.putImageData(img, 0, 0);
       ctx.imageSmoothingEnabled = false;
       ctx.drawImage(off, G.x0, G.y0, G.w, G.h);
+      if (smooth){
+        ctx.save(); ctx.beginPath(); ctx.rect(G.x0, G.y0, G.w, G.h); ctx.clip();
+        const px = x => G.x0 + (x + 0.5) / gw * G.w, py = y => G.y0 + (y + 0.5) / gh * G.h;
+        ctx.strokeStyle = pal.ink; ctx.lineWidth = 1;
+        for (const l of levels){
+          const sg = contourSegs(smooth, gw, gh, l); ctx.beginPath();
+          for (let k = 0; k < sg.length; k += 2){ ctx.moveTo(px(sg[k][0]), py(sg[k][1])); ctx.lineTo(px(sg[k+1][0]), py(sg[k+1][1])); }
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+      if (bgCnt) this.drawLegend(ctx, G, pal, [{col: pal.bg, name: 'Backgate: ' + popName(this.backgate), fill: true}]);
       this.axisX(ctx, sx, G, pal, chLabel(s, this.xn));
       this.axisY(ctx, sy, G, pal, chLabel(s, this.yn));
     }
@@ -901,7 +1167,22 @@ class Panel {
     }
     this.yTitle(ctx, label, G, pal);
   }
-  axisYCount(ctx, ymax, G, pal){
+  drawLegend(ctx, G, pal, items){
+    if (!items.length) return;
+    ctx.font = '11px ' + pal.fSans; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+    const maxW = Math.min(G.w * 0.6, 220), fit = t => { if (ctx.measureText(t).width <= maxW) return t; while (t.length > 1 && ctx.measureText(t + '…').width > maxW) t = t.slice(0, -1); return t + '…'; };
+    const rows = items.slice(0, 9).map(it => ({...it, t: fit(it.name)})), w = Math.max(...rows.map(r => ctx.measureText(r.t).width)) + 30, h = rows.length * 15 + 8;
+    const x = G.x0 + G.w - w - 6, y = G.y0 + 6;
+    ctx.globalAlpha = 0.88; ctx.fillStyle = pal.surface; ctx.fillRect(x, y, w, h); ctx.globalAlpha = 1;
+    ctx.strokeStyle = pal.line; ctx.lineWidth = 1; ctx.strokeRect(x + .5, y + .5, w - 1, h - 1);
+    rows.forEach((r, k) => {
+      const cy = y + 11 + k * 15;
+      if (r.fill){ ctx.fillStyle = r.col; ctx.fillRect(x + 6, cy - 4, 14, 8); }
+      else { ctx.strokeStyle = r.col; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(x + 6, cy); ctx.lineTo(x + 20, cy); ctx.stroke(); }
+      ctx.fillStyle = pal.ink; ctx.fillText(r.t, x + 25, cy);
+    });
+  }
+  axisYCount(ctx, ymax, G, pal, title = 'Count'){
     const st = niceStep(ymax, 5);
     ctx.strokeStyle = pal.muted; ctx.textBaseline = 'middle';
     for (let v = 0; v <= ymax; v += st){
@@ -909,7 +1190,7 @@ class Panel {
       ctx.beginPath(); ctx.moveTo(G.x0, y); ctx.lineTo(G.x0 - 5, y); ctx.stroke();
       this.tickLabel(ctx, {label: fmtSI(v)}, G.x0 - 8, y + 1, 'right', pal);
     }
-    this.yTitle(ctx, 'Count', G, pal);
+    this.yTitle(ctx, title, G, pal);
   }
   yTitle(ctx, label, G, pal){
     ctx.save(); ctx.translate(14, G.y0 + G.h / 2); ctx.rotate(-Math.PI / 2);
@@ -935,7 +1216,7 @@ class Panel {
       return {p, box: [xa, G.y0, xb, G.y0 + G.h]};
     }
     const gx = makeScale(g.xs, chOf(s, g.xch)), gy = makeScale(g.ys, chOf(s, g.ych));
-    const same = g.xs === this.xs && g.ys === this.ys, steps = same ? 1 : 32, pts = [];
+    const same = g.xs === this.xs && g.ys === this.ys && !this.sx.base && !this.sy.base, steps = same ? 1 : 32, pts = [];
     // gate-space u at or beyond the border means "everything past this edge", so it maps to the panel border
     const map = (gs, ps, u) => same ? u : u <= 0 ? -0.02 : u >= 1 ? 1.02 : ps.fwd(gs.inv(u));
     const n = g.pts.length;
@@ -997,9 +1278,13 @@ class Panel {
       if (d.type === 'rect'){
         const [ax, ay] = this.toPx(d.u0, d.v0), [bx, by] = this.toPx(d.u1, d.v1);
         ctx.strokeRect(Math.min(ax, bx), Math.min(ay, by), Math.abs(bx - ax), Math.abs(by - ay));
-      } else if (d.type === 'range'){
+      } else if (d.type === 'range' || (d.type === 'zoom' && this.isHist)){
         const [ax] = this.toPx(d.u0, 0), [bx] = this.toPx(d.u1, 0);
         ctx.strokeRect(Math.min(ax, bx), G.y0, Math.abs(bx - ax), G.h);
+      } else if (d.type === 'zoom'){
+        const [ax, ay] = this.toPx(d.u0, d.v0), [bx, by] = this.toPx(d.u1, d.v1);
+        ctx.globalAlpha = .08; ctx.fillStyle = pal.accent; ctx.fillRect(Math.min(ax, bx), Math.min(ay, by), Math.abs(bx - ax), Math.abs(by - ay)); ctx.globalAlpha = 1;
+        ctx.strokeStyle = pal.accent; ctx.strokeRect(Math.min(ax, bx), Math.min(ay, by), Math.abs(bx - ax), Math.abs(by - ay));
       } else if (d.type === 'poly'){
         ctx.beginPath();
         d.pts.forEach(([u, v], i) => { const [x, y] = this.toPx(u, v); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
@@ -1022,7 +1307,7 @@ class Panel {
     const cc = state.cc, f = cc?.fit;
     if (!f?.ok || !this.isHist || this.xn !== cc.ch || this.xs !== 'lin' || !this.hmax) return;
     if (this.pop !== (cc.singId ?? cc.parent)) return;
-    const bwP = (this.sx.hi - this.sx.lo) / this.hNB, Y = v => G.y0 + G.h - v / this.hmax * G.h;
+    const hs = this.hscale || 1, bwP = (this.sx.hi - this.sx.lo) / this.hNB, Y = v => G.y0 + G.h - v * hs / this.hmax * G.h;
     const sScale = f.nSraw > 0 ? f.S / f.nSraw : 0, STEPS = 360;
     const comp = (x) => {
       const g1 = f.G1 * bwP * gaussPdf(x, f.mu1, f.sd1), g2 = f.G2 * bwP * gaussPdf(x, f.mu2, f.sd2);
@@ -1180,7 +1465,7 @@ class Panel {
       return;
     }
     if (this.tool === 'quad'){ this.addQuadrant(P.u, P.v); return; }
-    if (this.tool === 'rect' || this.tool === 'range'){
+    if (this.tool === 'rect' || this.tool === 'range' || this.tool === 'zoom'){
       this.draft = {type: this.tool, u0: P.u, v0: P.v, u1: P.u, v1: P.v};
       this.over.setPointerCapture(e.pointerId); this.drawOver(); return;
     }
@@ -1234,13 +1519,22 @@ class Panel {
       liveRefresh(); return;
     }
     const d = this.draft; if (!d) return;
-    if (d.type === 'rect' || d.type === 'range'){ d.u1 = P.u; d.v1 = P.v; this.drawOver(); }
+    if (d.type === 'rect' || d.type === 'range' || d.type === 'zoom'){ d.u1 = P.u; d.v1 = P.v; this.drawOver(); }
     else if (d.type === 'poly'){ d.hover = [P.u, P.v]; this.drawOver(); }
   }
   onUp(e){
     if (this.drag){ const moved = this.drag.moved; this.drag = null; this.over.style.cursor = ''; if (moved) refresh(); return; }
     const d = this.draft; if (!d || d.type === 'poly') return;
     const G = this.geom();
+    if (d.type === 'zoom'){
+      const c = u => clamp(u, 0, 1), wide = Math.abs(d.u1 - d.u0) * G.w >= 6, tall = this.isHist || Math.abs(d.v1 - d.v0) * G.h >= 6;
+      this.draft = null;
+      if (!wide || !tall){ this.drawOver(); return; }
+      this.xr = {lo: this.sx.inv(c(Math.min(d.u0, d.u1))), hi: this.sx.inv(c(Math.max(d.u0, d.u1)))};
+      if (!this.isHist) this.yr = {lo: this.sy.inv(c(Math.min(d.v0, d.v1))), hi: this.sy.inv(c(Math.max(d.v0, d.v1)))};
+      this.setTool('select'); this.syncZoom(); this.draw(); markChange();
+      return;
+    }
     if (d.type === 'rect'){
       if (Math.abs(d.u1 - d.u0) * G.w < 4 || Math.abs(d.v1 - d.v0) * G.h < 4){ this.draft = null; this.drawOver(); return; }
       const ua = Math.min(d.u0, d.u1), ub = Math.max(d.u0, d.u1), va = Math.min(d.v0, d.v1), vb = Math.max(d.v0, d.v1);
@@ -1253,6 +1547,7 @@ class Panel {
   }
   onDbl(e){
     if (this.tool === 'select'){ this.editCorners(e); return; }
+    if (this.tool === 'zoom'){ this.draft = null; this.resetZoom(); return; }
     const d = this.draft; if (!d || d.type !== 'poly') return;
     // the two clicks of a double-click each added a point; drop the duplicate
     if (d.pts.length >= 2){ const a = d.pts[d.pts.length - 1], b = d.pts[d.pts.length - 2]; if (Math.hypot(a[0]-b[0], a[1]-b[1]) < 0.01) d.pts.pop(); }
@@ -1297,8 +1592,8 @@ class Panel {
     state.sel = pick; this.draft = null; this.setTool('select');
     refresh();
   }
-  addGate(type, pts, shape){
-    const g = {id: state.nextId++, name: `P${state.nextId - 1}`, parent: this.pop === 'all' ? null : this.pop, type, shape: shape || type,
+  addGate(type, pts, shape, name){
+    const g = {id: state.nextId++, name: name || `P${state.nextId - 1}`, parent: this.pop === 'all' ? null : this.pop, type, shape: shape || type,
       xch: this.xn, ych: type === 'range' ? null : this.yn, xs: this.xs, ys: type === 'range' ? null : this.ys, pts};
     state.gates.push(g); this.draft = null; state.sel = g.id;
     // follow the gating flow: the other plot moves into the new population if it was showing the parent
@@ -1326,7 +1621,9 @@ function openAxisMenu(panel, axis, cx, cy){
     const sc = isY ? panel.ys : panel.xs;
     html += `<div class="msep" role="separator"></div><div class="mhead">Scale</div>` +
       [['lin', 'Linear'], ['log', 'Log'], ['asinh', 'Biexponential']].map(([v, l]) => item('sc:' + v, l, sc === v)).join('') +
-      `<div class="msep" role="separator"></div><button type="button" role="menuitem" data-v="rename">Rename ${esc(curCh)}…</button>`;
+      `<div class="msep" role="separator"></div><button type="button" role="menuitem" data-v="range">Set range…</button>` +
+      ((isY ? panel.yr : panel.xr) ? `<button type="button" role="menuitem" data-v="unrange">Reset range</button>` : '') +
+      `<button type="button" role="menuitem" data-v="rename">Rename ${esc(curCh)}…</button>`;
   }
   axisMenu.innerHTML = html;
   axisMenu.classList.remove('wide');
@@ -1343,6 +1640,8 @@ axisMenu.addEventListener('click', e => {
   const b = e.target.closest('button[data-v]'); if (!b || !menuCtx) return;
   const ctx = menuCtx, {panel, axis} = ctx, v = b.dataset.v;
   if (v === 'rename'){ showRenameForm(ctx); return; }
+  if (v === 'range'){ showRangeForm(ctx); return; }
+  if (v === 'unrange'){ closeAxisMenu(); panel.setRange(axis, null); return; }
   if (v === 'cancel'){ closeAxisMenu(); return; }
   if (v === 'reset'){ closeAxisMenu(); setLabel(ctx.renameCh, ''); return; }
   closeAxisMenu();
@@ -1350,7 +1649,17 @@ axisMenu.addEventListener('click', e => {
   if (v.startsWith('ch:')) panel.setChannel(axis, v.slice(3));
   else if (v.startsWith('sc:')) panel.setScale(axis, v.slice(3));
 });
-axisMenu.addEventListener('submit', e => { e.preventDefault(); const ctx = menuCtx, v = $('#renameInput')?.value; closeAxisMenu(); if (ctx?.renameCh) setLabel(ctx.renameCh, v); });
+axisMenu.addEventListener('submit', e => {
+  e.preventDefault(); const ctx = menuCtx;
+  if ($('#rangeLo')){
+    const lo = parseSI($('#rangeLo').value), hi = parseSI($('#rangeHi').value), err = $('#rangeErr');
+    if (!Number.isFinite(lo) || !Number.isFinite(hi) || !(hi > lo)){ err.textContent = 'Enter two numbers, the second larger than the first (20k and 1.5M work too).'; return; }
+    const sc = ctx.axis === 'y' ? ctx.panel.ys : ctx.panel.xs;
+    if (sc === 'log' && lo <= 0){ err.textContent = 'A log axis cannot show zero or negative values. Use Biexponential for those.'; return; }
+    closeAxisMenu(); ctx.panel.setRange(ctx.axis, {lo, hi}); return;
+  }
+  const v = $('#renameInput')?.value; closeAxisMenu(); if (ctx?.renameCh) setLabel(ctx.renameCh, v);
+});
 axisMenu.addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT'){ if (e.key === 'Escape'){ e.preventDefault(); e.stopPropagation(); closeAxisMenu(); } return; }
   const items = [...axisMenu.querySelectorAll('button')], i = items.indexOf(document.activeElement);
@@ -1364,16 +1673,21 @@ document.addEventListener('pointerdown', e => { if (!axisMenu.hidden && !axisMen
 window.addEventListener('resize', closeAxisMenu);
 window.addEventListener('scroll', e => { if (!axisMenu.contains(e.target)) closeAxisMenu(); }, true);
 
+/* ---------------- Per-plot view settings ---------------- */
+const PANEL_VIEW = ['pop', 'xn', 'yn', 'y2', 'xs', 'ys', 'role', 'xr', 'yr', 'style', 'backgate', 'overlay', 'norm'];
+const panelViewDefaults = () => ({role: null, xr: null, yr: null, style: 'density', backgate: null, overlay: [], norm: false, y2: null});
+const panelView = p => clone(Object.fromEntries(PANEL_VIEW.map(k => [k, p[k] ?? panelViewDefaults()[k] ?? null])));
+
 /* ---------------- Undo / redo ---------------- */
 const HIST_MAX = 100;
 const clone = o => JSON.parse(JSON.stringify(o));
 function snapshot(){
   const C = state.comp, cc = state.cc;
   return {
-    gates: clone(state.gates), nextId: state.nextId, labels: {...state.labels},
+    gates: clone(state.gates), nextId: state.nextId, labels: {...state.labels}, volumes: {...state.volumes},
     comp: {on: C.on, chs: C.chs.slice(), S: {...C.S}, ctrl: {...C.ctrl}, unst: C.unst, pop: C.pop},
     cc: cc ? {ch: cc.ch, hch: cc.hch, parent: cc.parent, singId: cc.singId, wedge: cc.wedge ? clone(cc.wedge) : null} : null,
-    panels: panels.map(p => ({key: p.key, defs: p.defs, pop: p.pop, xn: p.xn, yn: p.yn, y2: p.y2 ?? null, xs: p.xs, ys: p.ys, role: p.role ?? null})),
+    panels: panels.map(p => ({key: p.key, defs: p.defs, ...panelView(p)})),
   };
 }
 // samples are compared by name; everything else by value
@@ -1387,6 +1701,7 @@ function markChange(label){
   if (hist.undo.length > HIST_MAX) hist.undo.shift();
   hist.redo = []; hist.cur = snap; hist.sig = sig;
   syncHistButtons();
+  scheduleAutosave();
 }
 function describeChange(a, b){
   const same = (x, y) => snapSig(x) === snapSig(y);
@@ -1416,7 +1731,7 @@ function describeChange(a, b){
 function restoreSnapshot(snap){
   hist.busy++;
   try {
-    state.gates = clone(snap.gates); state.nextId = snap.nextId; state.labels = {...(snap.labels || {})};
+    state.gates = clone(snap.gates); state.nextId = snap.nextId; state.labels = {...(snap.labels || {})}; state.volumes = {...(snap.volumes || {})};
     const C = state.comp, live = x => x && state.samples.includes(x) ? x : null;
     C.on = snap.comp.on; C.chs = snap.comp.chs.slice(); C.S = {...snap.comp.S}; C.pop = snap.comp.pop; C.unst = live(snap.comp.unst);
     C.ctrl = {}; for (const [k, x] of Object.entries(snap.comp.ctrl)) if (live(x)) C.ctrl[k] = x;
@@ -1427,7 +1742,8 @@ function restoreSnapshot(snap){
       let p = panels.find(x => x.key === q.key);
       if (!p) p = addPanel({key: q.key, defs: q.defs, pop: q.pop});
       if (!p) continue;
-      Object.assign(p, {pop: q.pop, xn: q.xn, yn: q.yn, y2: q.y2, xs: q.xs, ys: q.ys, role: q.role, draft: null, drag: null});
+      Object.assign(p, panelViewDefaults(), clone(Object.fromEntries(PANEL_VIEW.filter(k => k in q).map(k => [k, q[k]]))), {draft: null, drag: null});
+      p.syncZoom?.();
       p.fillChannels(); p.setTool('select');
     }
     if (state.sel != null && !gateById(state.sel)) state.sel = null;
@@ -1498,6 +1814,7 @@ function setCurrentInner(i){
   $('#sampleSel').innerHTML = state.samples.map((x, k) => `<option value="${k}">${esc(x.name)}</option>`).join('');
   $('#sampleSel').value = String(i);
   $('#prevSample').disabled = $('#nextSample').disabled = state.samples.length < 2;
+  renderSamples();
   $('#exampleTag').hidden = !s?.example;
   if (s){
     if (!state.comp.chs.length) state.comp.chs = candidates(s);
@@ -1554,15 +1871,91 @@ const fmtN = (v, d) => Number.isFinite(v) ? v.toLocaleString('en-GB', {maximumFr
 function renderTable(){
   const s = cur(), t = $('#popTable'); if (!s){ t.innerHTML = ''; return; }
   const rows = popRows(), ch = esc(chOf(s, state.statCh)?.label || state.statCh), total = s.n;
-  const cnt = id => rows.find(r => r.id === id)?.c || 0;
-  t.innerHTML = `<thead><tr><th>Population</th><th>Events</th><th>% of parent</th><th>% of total</th><th>Median ${ch}</th><th>Mean ${ch}</th><th>CV</th><th><span hidden>Actions</span></th></tr></thead><tbody>` +
+  const cnt = id => rows.find(r => r.id === id)?.c || 0, vol = sampleVol(s);
+  t.innerHTML = `<thead><tr><th>Population</th><th>Events</th>${vol ? '<th title="Events per microlitre of sample analysed">Events/<span class="nocase">µL</span></th>' : ''}<th>% of parent</th><th>% of total</th><th>Median ${ch}</th><th>Mean ${ch}</th><th>CV</th><th><span hidden>Actions</span></th></tr></thead><tbody>` +
     rows.map(r => {
       const pc = r.parent == null ? NaN : (cnt(r.parent) ? 100 * r.c / cnt(r.parent) : 0);
       const name = r.id === 'all' ? `<span class="rootname">All events</span>`
         : `<span class="tree">${'│ '.repeat(Math.max(0, r.depth - 1))}└</span><input type="text" class="gname" id="gname-${r.id}" data-id="${r.id}" value="${esc(r.name)}" aria-label="Name of gate ${esc(r.name)}">`;
-      return `<tr data-id="${r.id}" class="${state.sel === r.id ? 'sel' : ''}"><td><div class="pcell">${name}</div></td><td>${nf.format(r.c)}</td><td>${r.parent == null ? '—' : fmtN(pc, 1) + '%'}</td><td>${fmtN(total ? 100 * r.c / total : 0, 1)}%</td><td>${fmtN(r.med, 0)}</td><td>${fmtN(r.mean, 0)}</td><td>${Number.isFinite(r.cv) ? fmtN(r.cv, 1) + '%' : '—'}</td><td>${r.id === 'all' ? '' : `<button type="button" class="del" data-del="${r.id}">Delete</button>`}</td></tr>`;
+      return `<tr data-id="${r.id}" class="${state.sel === r.id ? 'sel' : ''}"><td><div class="pcell">${name}</div></td><td>${nf.format(r.c)}</td>${vol ? `<td>${fmtConc(r.c / vol)}</td>` : ''}<td>${r.parent == null ? '—' : fmtN(pc, 1) + '%'}</td><td>${fmtN(total ? 100 * r.c / total : 0, 1)}%</td><td>${fmtN(r.med, 0)}</td><td>${fmtN(r.mean, 0)}</td><td>${Number.isFinite(r.cv) ? fmtN(r.cv, 1) + '%' : '—'}</td><td>${r.id === 'all' ? '' : `<button type="button" class="del" data-del="${r.id}">Delete</button>`}</td></tr>`;
     }).join('') + '</tbody>';
+  renderTree();
 }
+/* ---------------- Absolute counts ---------------- */
+// volume analysed in µL: typed in by the user, else $VOL (FCS 3.1, in nanolitres)
+function sampleVol(s){
+  if (!s) return null;
+  const v = state.volumes[s.name]; if (v > 0) return v;
+  const k = parseFloat(s.kw['$VOL']); return k > 0 ? k / 1000 : null;
+}
+const fmtConc = v => !Number.isFinite(v) ? '—' : v >= 100 ? nf.format(Math.round(v)) : v >= 1 ? v.toFixed(1) : v.toPrecision(2);
+function setVolume(s, text){
+  const t = String(text).trim();
+  if (t === ''){ delete state.volumes[s.name]; }
+  else { const v = parseFloat(t.replace(',', '.')); if (!(v > 0) || !Number.isFinite(v)){ toast('Enter the volume analysed in µL, for example 25.'); renderVolume(); return; } state.volumes[s.name] = v; }
+  renderVolume(); renderTable(); markChange('set volume');
+}
+function renderVolume(){
+  const s = cur(), inp = $('#volInput'), note = $('#volNote'); if (!inp) return;
+  if (!s){ inp.value = ''; return; }
+  const own = state.volumes[s.name], k = parseFloat(s.kw['$VOL']);
+  inp.value = own > 0 ? own : '';
+  inp.placeholder = k > 0 ? String(+(k / 1000).toPrecision(6)) : 'not set';
+  note.textContent = own > 0 ? '' : k > 0 ? 'from file' : '';
+}
+
+/* ---------------- Auto-gates ---------------- */
+// Main cell population: the densest cluster on the plot, outlined at 12% of its peak density
+function autoGateCells(p){
+  const s = cur(); if (!s || p.isHist) return;
+  const N = 96, mask = popMask(s, p.pop), U = getU(s, s.idx[p.xn], p.xs), V = getU(s, s.idx[p.yn], p.ys), cnt = new Float32Array(N * N);
+  const bx = makeScale(p.xs, chOf(s, p.xn)), by = makeScale(p.ys, chOf(s, p.yn));
+  let n = 0;
+  for (let i = 0; i < s.n; i++){
+    if (!mask[i]) continue;
+    const u = U[i], v = V[i];
+    if (u <= 0.002 || u >= 0.998 || v <= 0.002 || v >= 0.998) continue; // events piled on an axis are debris or off scale
+    cnt[Math.min(N - 1, ((1 - v) * N) | 0) * N + Math.min(N - 1, (u * N) | 0)]++; n++;
+  }
+  if (n < 100){ toast('Too few events on this plot to find a population.'); return; }
+  const sm = smoothGrid(cnt, N, N, 2);
+  let pk = 0; for (let i = 1; i < sm.length; i++) if (sm[i] > sm[pk]) pk = i;
+  const thr = sm[pk] * 0.12, inC = new Uint8Array(N * N), stack = [pk]; inC[pk] = 1;
+  while (stack.length){
+    const i = stack.pop(), x = i % N, y = (i / N) | 0;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]){
+      const X = x + dx, Y = y + dy, j = Y * N + X;
+      if (X >= 0 && X < N && Y >= 0 && Y < N && !inC[j] && sm[j] >= thr){ inC[j] = 1; stack.push(j); }
+    }
+  }
+  const pts = [];
+  for (let i = 0; i < inC.length; i++) if (inC[i]){ const x = i % N, y = (i / N) | 0; pts.push([x / N, 1 - y / N], [(x + 1) / N, 1 - y / N], [x / N, 1 - (y + 1) / N], [(x + 1) / N, 1 - (y + 1) / N]); }
+  const hull = convexHull(pts);
+  if (hull.length < 3){ toast('No clear population found on this plot.'); return; }
+  p.addGate('poly', hull.map(([u, v]) => [bx.inv(clamp(u, 0.003, 0.997)), by.inv(clamp(v, 0.003, 0.997))]), 'poly', 'Cells');
+}
+function convexHull(P){
+  const pts = P.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]), cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lo = [], hi = [];
+  for (const q of pts){ while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop(); lo.push(q); }
+  for (const q of pts.reverse()){ while (hi.length >= 2 && cr(hi[hi.length - 2], hi[hi.length - 1], q) <= 0) hi.pop(); hi.push(q); }
+  return lo.slice(0, -1).concat(hi.slice(0, -1));
+}
+// Singlets: a wedge around the main area/height ratio. Uses the plot's channels if they are an -A / -H pair, else FSC-A against FSC-H.
+function autoGateSinglets(p){
+  const s = cur(); if (!s) return;
+  const base = n => n.replace(/-[AHW]$/i, ''), isA = n => /-A$/i.test(n), isH = n => /-H$/i.test(n);
+  let a, h, swap = false;
+  if (!p.isHist && isA(p.xn) && isH(p.yn) && base(p.xn) === base(p.yn)){ a = p.xn; h = p.yn; }
+  else if (!p.isHist && isH(p.xn) && isA(p.yn) && base(p.xn) === base(p.yn)){ a = p.yn; h = p.xn; swap = true; }
+  else if ('FSC-A' in s.idx && 'FSC-H' in s.idx){ a = 'FSC-A'; h = 'FSC-H'; }
+  else { toast('Singlet gating needs an area and a height channel, such as FSC-A and FSC-H.'); return; }
+  const w = singletWedge(s, a, h, p.pop);
+  if (!w){ toast('Too few events to find singlets.'); return; }
+  p.xn = swap ? h : a; p.yn = swap ? a : h; p.xs = 'lin'; p.ys = 'lin'; p.xr = p.yr = null; p.setTool('select'); p.syncControls(); p.syncZoom();
+  p.addGate('poly', swap ? w.pts.map(([x, y]) => [y, x]) : w.pts, 'poly', 'Singlets');
+}
+
 // quadrant n: 1 = X− Y+ (top left), 2 = X+ Y+, 3 = X+ Y−, 4 = X− Y− ; outer edges are open-ended
 function quadPts(q, cx, cy){
   const E = EDGE;
@@ -1826,7 +2219,7 @@ $('#popTable').addEventListener('change', e => {
   g.name = inp.value.trim() || g.name;
   panels.forEach(p => { p.fillPops(); p.draw(); }); renderTable(); fillCompPop(); fillCcParent(); markChange();
 });
-$('#popTable').addEventListener('focusin', e => { const inp = e.target.closest('.gname'); if (inp && state.sel !== +inp.dataset.id){ state.sel = +inp.dataset.id; drawAllOverlays(); document.querySelectorAll('#popTable tr').forEach(tr => tr.classList.toggle('sel', tr.dataset.id === inp.dataset.id)); } });
+$('#popTable').addEventListener('focusin', e => { const inp = e.target.closest('.gname'); if (inp && state.sel !== +inp.dataset.id){ state.sel = +inp.dataset.id; drawAllOverlays(); document.querySelectorAll('#popTable tr').forEach(tr => tr.classList.toggle('sel', tr.dataset.id === inp.dataset.id)); renderTree(); } });
 $('#statSel').addEventListener('change', e => { state.statCh = e.target.value; renderTable(); });
 $('#sampleSel').addEventListener('change', e => setCurrent(+e.target.value));
 const stepSample = d => { const n = state.samples.length; if (n > 1) setCurrent((state.cur + d + n) % n); };
@@ -1900,7 +2293,7 @@ window.addEventListener('dragleave', () => { dragDepth = Math.max(0, dragDepth -
 window.addEventListener('drop', e => { if (!hasFiles(e)) return; e.preventDefault(); dragDepth = 0; $('#drop').hidden = true; loadFiles([...e.dataTransfer.files]); });
 
 const redraw = () => { themeChanged(); panels.forEach(p => p.draw()); };
-matchMedia('(prefers-color-scheme: dark)').addEventListener('change', redraw);
+
 new MutationObserver(redraw).observe(document.documentElement, {attributes: true, attributeFilter: ['data-theme']});
 document.fonts?.ready.then(redraw);
 
@@ -1955,7 +2348,7 @@ function makeTube(kind, n, seed0, label){
     const row = [fsc, ssc, ...obs, fh, sh, 1000 * fsc / fh * (1 + 0.02 * g()), i * 1.5 + 1.5 * r()];
     row.forEach((v, p) => cols[p][i] = v);
   }
-  const buf = writeFCS(names, stains, cols, [['$CYT', 'Synthetic example'], ['$DATE', '28-OCT-2026'], ['$FIL', label + '.fcs'], ['$SRC', 'Generated in the browser']]);
+  const buf = writeFCS(names, stains, cols, [['$CYT', 'Synthetic example'], ['$DATE', '28-OCT-2026'], ['$FIL', label + '.fcs'], ['$SRC', 'Generated in the browser'], ['$VOL', '25000']]);
   const s = parseFCS(buf, label);
   s.example = true;
   return s;
@@ -1991,7 +2384,7 @@ function makeCellCycleTube(kind, n, seed0, label){
     const row = [fsc, ssc, L(3.1, .25) + 0.005 * dna, dna, L(3.0, .25) + 0.35 * dna, L(2.9, .25) + 0.02 * dna, fh, ssc * (0.8 + 0.03 * g()), ht, 1000 * fsc / fh * (1 + 0.02 * g()), i * 1.5 + 1.5 * r()];
     row.forEach((v, q) => cols[q][i] = v);
   }
-  const buf = writeFCS(names, stains, cols, [['$CYT', 'Synthetic example'], ['$DATE', '19-NOV-2026'], ['$FIL', label + '.fcs'], ['$SRC', 'Generated in the browser (PI cell cycle)']]);
+  const buf = writeFCS(names, stains, cols, [['$CYT', 'Synthetic example'], ['$DATE', '19-NOV-2026'], ['$FIL', label + '.fcs'], ['$SRC', 'Generated in the browser (PI cell cycle)'], ['$VOL', '25000']]);
   const s = parseFCS(buf, label); s.example = true; return s;
 }
 function makeExamples(){
@@ -2246,6 +2639,17 @@ function renderLabels(){
 }
 $('#labelsTable').addEventListener('change', e => { const inp = e.target.closest('.lbl'); if (inp) setLabel(inp.dataset.ch, inp.value); });
 $('#labelsTable').addEventListener('click', e => { const b = e.target.closest('[data-reset]'); if (b) setLabel(b.dataset.reset, ''); });
+function showRangeForm(ctx){
+  const p = ctx.panel, sc = ctx.axis === 'y' ? p.sy : p.sx; if (!sc) return;
+  const f = v => +v.toPrecision(4);
+  axisMenu.innerHTML = `<form class="mrename"><div class="mhead">Plot ${p.key} · ${ctx.axis.toUpperCase()} axis range</div>
+    <div class="mrange"><label>From<input id="rangeLo" type="text" inputmode="decimal" autocomplete="off" value="${f(sc.lo)}"></label>
+    <label>To<input id="rangeHi" type="text" inputmode="decimal" autocomplete="off" value="${f(sc.hi)}"></label></div>
+    <div class="mnote" id="rangeErr" role="alert"></div>
+    <div class="mbtns"><button type="submit" class="btn primary">Apply</button><button type="button" class="btn" data-v="unrange">Full range</button><button type="button" class="btn" data-v="cancel">Cancel</button></div></form>`;
+  axisMenu.classList.add('wide');
+  const inp = $('#rangeLo'); inp.focus(); inp.select();
+}
 function showRenameForm(ctx){
   const s = cur(), name = ctx.renameCh, c = chOf(s, name); if (!c) return;
   axisMenu.innerHTML = `<form class="mrename"><div class="mhead">Rename ${esc(name)}</div>
@@ -2371,14 +2775,14 @@ function exportStats(){
   const s0 = cur(); if (!s0) return;
   const names = [...new Set(state.samples.flatMap(x => x.ch.filter(c => !c.isTime).map(c => c.name)))];
   const labelOf = n => chOf(s0, n)?.label || state.samples.map(x => chOf(x, n)).find(Boolean)?.label || n;
-  const parts = ['﻿' + csvLine(['Sample', 'Population', 'Parent', 'Events', '% of parent', '% of total', 'Compensated', ...names.map(n => `Median ${labelOf(n)}`)])];
+  const parts = ['﻿' + csvLine(['Sample', 'Population', 'Parent', 'Events', 'Volume (µL)', 'Events/µL', '% of parent', '% of total', 'Compensated', ...names.map(n => `Median ${labelOf(n)}`)])];
   const pops = [{id: 'all', name: 'All events', parent: null}, ...treeOrder().map(({g}) => ({id: g.id, name: g.name, parent: g.parent ?? 'all'}))];
   for (const x of state.samples){
-    applyComp(x); computeMasks(x);
+    applyComp(x); computeMasks(x); const vol = sampleVol(x);
     for (const p of pops){
       const m = popMask(x, p.id), c = popCount(x, p.id), pc = p.parent == null ? null : popCount(x, p.parent);
       const meds = names.map(n => n in x.idx ? statsFor(x, m, x.cols[x.idx[n]]).med : NaN);
-      parts.push(csvLine([x.name, p.name, p.parent == null ? '' : popName(p.parent), c, pc == null ? '' : (pc ? (100 * c / pc).toFixed(2) : '0'),
+      parts.push(csvLine([x.name, p.name, p.parent == null ? '' : popName(p.parent), c, vol ?? '', vol ? +(c / vol).toPrecision(5) : '', pc == null ? '' : (pc ? (100 * c / pc).toFixed(2) : '0'),
         (100 * c / (x.n || 1)).toFixed(2), x.compChs?.size ? 'yes' : 'no', ...meds.map(v => Number.isFinite(v) ? +v.toPrecision(6) : '')]));
     }
   }
@@ -2472,10 +2876,10 @@ function workspaceObject(){
   const C = state.comp, cc = state.cc;
   return {
     app: 'SpectraFree', format: 1, savedAt: new Date().toISOString(), samples: state.samples.map(x => x.name),
-    gates: clone(state.gates.map(g => { const {example, ...rest} = g; return rest; })), nextId: state.nextId, labels: {...state.labels},
+    gates: clone(state.gates.map(g => { const {example, ...rest} = g; return rest; })), nextId: state.nextId, labels: {...state.labels}, volumes: {...state.volumes},
     comp: {on: C.on, chs: C.chs.slice(), S: {...C.S}, pop: C.pop, unst: C.unst?.name ?? null, ctrl: Object.fromEntries(Object.entries(C.ctrl).filter(([, x]) => x).map(([k, x]) => [k, x.name]))},
     cellCycle: cc ? {ch: cc.ch, hch: cc.hch, parent: cc.parent, singId: cc.singId} : null,
-    plots: panels.map(p => ({key: p.key, pop: p.pop, xn: p.xn, yn: p.yn, y2: p.y2 ?? null, xs: p.xs, ys: p.ys, role: p.role ?? null})),
+    plots: panels.map(p => ({key: p.key, ...panelView(p)})),
     statCh: state.statCh,
   };
 }
@@ -2499,17 +2903,21 @@ function cleanWorkspace(o){
   const ids = new Set(gates.map(g => g.id));
   gates.forEach(g => { if (g.parent != null && !ids.has(g.parent)) g.parent = null; });
   const popOk = v => v === 'all' || (num(v) && ids.has(v)) ? v : 'all';
+  const rangeOk = r => r && num(r.lo) && num(r.hi) && r.hi > r.lo ? {lo: r.lo, hi: r.hi} : null;
   const byName = n => state.samples.find(x => x.name === n) || null;
   const labels = {}; if (o.labels && typeof o.labels === 'object') for (const [k, v] of Object.entries(o.labels)) if (str(k) && str(v)) labels[k] = v.slice(0, 60);
+  const volumes = {}; if (o.volumes && typeof o.volumes === 'object') for (const [k, v] of Object.entries(o.volumes)) if (str(k) && num(v) && v > 0) volumes[k] = v;
   const S = {}; if (o.comp?.S && typeof o.comp.S === 'object') for (const [k, v] of Object.entries(o.comp.S)) if (str(k) && num(v)) S[k] = v;
   const ctrl = {}; if (o.comp?.ctrl && typeof o.comp.ctrl === 'object') for (const [k, v] of Object.entries(o.comp.ctrl)) if (str(k) && byName(v)) ctrl[k] = byName(v);
   const plots = o.plots.filter(p => p && str(p.key) && /^[A-Z]{1,2}\d{0,2}$/.test(p.key) && str(p.xn) && str(p.yn) && scale(p.xs) && scale(p.ys)).slice(0, MAX_PLOTS)
-    .map((p, i) => ({key: p.key, defs: PLOT_DEFAULTS[Math.min(i, PLOT_DEFAULTS.length - 1)], pop: popOk(p.pop), xn: p.xn, yn: p.yn, y2: str(p.y2) ? p.y2 : null, xs: p.xs, ys: p.ys, role: str(p.role) ? p.role : null}));
+    .map((p, i) => ({key: p.key, defs: PLOT_DEFAULTS[Math.min(i, PLOT_DEFAULTS.length - 1)], pop: popOk(p.pop), xn: p.xn, yn: p.yn, y2: str(p.y2) ? p.y2 : null, xs: p.xs, ys: p.ys, role: str(p.role) ? p.role : null,
+      xr: rangeOk(p.xr), yr: rangeOk(p.yr), style: ['density', 'contour', 'dots', 'grey'].includes(p.style) ? p.style : 'density',
+      backgate: num(p.backgate) && ids.has(p.backgate) ? p.backgate : null, overlay: Array.isArray(p.overlay) ? p.overlay.filter(str).slice(0, 8) : [], norm: !!p.norm}));
   if (!plots.length) plots.push({key: 'A', defs: PLOT_DEFAULTS[0], pop: 'all', xn: 'FSC-A', yn: 'SSC-A', y2: null, xs: 'log', ys: 'log', role: null});
   const ccIn = o.cellCycle;
   const cc = ccIn && str(ccIn.ch) && (ccIn.hch === '' || str(ccIn.hch)) ? {ch: ccIn.ch, hch: ccIn.hch, parent: popOk(ccIn.parent), singId: num(ccIn.singId) && ids.has(ccIn.singId) ? ccIn.singId : null, wedge: null} : null;
   return {
-    snap: {gates, nextId: Math.max(num(o.nextId) ? o.nextId : 1, ...gates.map(g => g.id + 1), 1), labels,
+    snap: {gates, nextId: Math.max(num(o.nextId) ? o.nextId : 1, ...gates.map(g => g.id + 1), 1), labels, volumes,
       comp: {on: !!o.comp?.on, chs: Array.isArray(o.comp?.chs) ? o.comp.chs.filter(str) : [], S, ctrl, unst: byName(o.comp?.unst), pop: o.comp?.pop === 'all' || o.comp?.pop === 'auto' ? o.comp.pop : popOk(o.comp?.pop)},
       cc, panels: plots},
     statCh: str(o.statCh) ? o.statCh : null,
@@ -2527,6 +2935,194 @@ async function openWorkspace(file){
   showMsg(`Opened ${file.name}: ${g} gate${g === 1 ? '' : 's'} and ${pl} plot${pl === 1 ? '' : 's'}.` + (w.missing.length ? ` It was saved with ${w.missing.length} sample${w.missing.length === 1 ? '' : 's'} that ${w.missing.length === 1 ? 'is' : 'are'} not open now (${w.missing.slice(0, 3).join(', ')}${w.missing.length > 3 ? '…' : ''}); the gates apply to any sample with the same channel names.` : ''), true);
 }
 $('#wsFile').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if (f) openWorkspace(f); });
+
+
+/* ---------------- Batch reports: PDF and PowerPoint ---------------- */
+const APP_VERSION = '1.3.0';
+// One report page for the current sample: plots on the left, statistics on the right.
+// header=false leaves the title out (the PowerPoint slide has it as editable text instead).
+function composeReportPage(W, H, opts = {}){
+  const s = cur(), u = W / 1600, c = document.createElement('canvas'); c.width = W; c.height = H;
+  const x = c.getContext('2d'), F = (w, px) => `${w} ${Math.round(px * u)}px "Instrument Sans", "Segoe UI", system-ui, sans-serif`;
+  const M = (px => Math.round(px * u)), fit = (t, w) => { if (x.measureText(t).width <= w) return t; while (t.length > 1 && x.measureText(t + '…').width > w) t = t.slice(0, -1); return t + '…'; };
+  x.fillStyle = '#ffffff'; x.fillRect(0, 0, W, H); x.textBaseline = 'alphabetic';
+  let top = M(40);
+  if (opts.header !== false){
+    x.fillStyle = '#6b33c4'; x.font = F(600, 15); x.fillText('SpectraFree report', M(48), top + M(10));
+    x.fillStyle = '#62577a'; x.font = F(400, 15); x.textAlign = 'right'; x.fillText(`Page ${opts.page} of ${opts.pages}`, W - M(48), top + M(10)); x.textAlign = 'left';
+    x.fillStyle = '#1d1428'; x.font = F(650, 30); x.fillText(fit(s.name, W - M(96)), M(48), top + M(50));
+    x.fillStyle = '#62577a'; x.font = F(400, 16); x.fillText(fit(reportDetails(s), W - M(96)), M(48), top + M(78));
+    x.fillStyle = '#e0d8ea'; x.fillRect(M(48), top + M(96), W - M(96), Math.max(1, M(1.5)));
+    top += M(116);
+  } else top = M(16);
+  const foot = M(34), bodyH = H - top - foot;
+  // statistics table
+  const rows = popRows(), vol = sampleVol(s), chL = chOf(s, state.statCh)?.label || state.statCh, cntOf = id => rows.find(r => r.id === id)?.c || 0;
+  const tableW = Math.round((W - M(96)) * 0.4), tx = W - M(48) - tableW;
+  const cols = [['Population', 0.34, 'left'], ['Events', 0.14, 'right'], ['% parent', 0.13, 'right'], ['% total', 0.12, 'right'], ...(vol ? [['Events/µL', 0.15, 'right']] : []), [`Median`, vol ? 0.13 : 0.22, 'right']];
+  const totW = cols.reduce((a, c) => a + c[1], 0), colX = []; let acc = tx;
+  cols.forEach(cl => { const w = cl[1] / totW * tableW; colX.push([acc, w]); acc += w; });
+  const cc = state.cc?.fit?.ok && state.cc.compare?.some(r => r.x === s) ? state.cc.fit : null;
+  const maxRows = Math.max(3, Math.floor((bodyH - M(70) - (cc ? M(110) : 0)) / M(26)));
+  const rowH = Math.min(M(28), Math.max(M(18), (bodyH - M(70) - (cc ? M(110) : 0)) / Math.min(rows.length, maxRows)));
+  let y = top + M(10);
+  x.fillStyle = '#1d1428'; x.font = F(600, 17); x.fillText('Populations', tx, y + M(8));
+  x.fillStyle = '#62577a'; x.font = F(400, 13); x.textAlign = 'right'; x.fillText(fit(`Median of ${chL}`, tableW * 0.6), tx + tableW, y + M(8)); x.textAlign = 'left';
+  y += M(36);
+  x.font = F(600, 12); x.fillStyle = '#62577a';
+  cols.forEach((cl, i) => { x.textAlign = cl[2]; x.fillText(cl[0], cl[2] === 'right' ? colX[i][0] + colX[i][1] - M(6) : colX[i][0] + M(4), y); });
+  y += M(8); x.fillStyle = '#e0d8ea'; x.fillRect(tx, y, tableW, Math.max(1, M(1)));
+  const shown = rows.slice(0, maxRows);
+  shown.forEach((r, k) => {
+    const cy = y + rowH * (k + 1) - rowH * 0.32;
+    if (k % 2 === 1){ x.fillStyle = '#f7f4fb'; x.fillRect(tx, y + rowH * k + M(1), tableW, rowH); }
+    const pcP = r.parent == null ? '—' : fmtN(cntOf(r.parent) ? 100 * r.c / cntOf(r.parent) : 0, 1) + '%';
+    const vals = [r.name, nf.format(r.c), pcP, fmtN(s.n ? 100 * r.c / s.n : 0, 1) + '%', ...(vol ? [fmtConc(r.c / vol)] : []), fmtN(r.med, 0)];
+    vals.forEach((v, i) => {
+      x.textAlign = cols[i][2]; x.fillStyle = i === 0 ? '#1d1428' : '#2c2338';
+      x.font = i === 0 ? F(r.id === 'all' ? 600 : 400, 14) : `${Math.round(13 * u)}px "IBM Plex Mono", Consolas, monospace`;
+      if (i === 0){ const ind = M(14) * r.depth; x.fillText(fit(String(v), colX[0][1] - ind - M(8)), colX[0][0] + M(4) + ind, cy); }
+      else x.fillText(String(v), colX[i][0] + colX[i][1] - M(6), cy);
+    });
+  });
+  x.textAlign = 'left'; y += rowH * shown.length + M(6);
+  x.fillStyle = '#e0d8ea'; x.fillRect(tx, y, tableW, Math.max(1, M(1)));
+  if (rows.length > shown.length){ y += M(20); x.fillStyle = '#62577a'; x.font = F(400, 13); x.fillText(`… and ${rows.length - shown.length} more populations (see the statistics export)`, tx, y); }
+  if (cc){
+    y += M(40); x.fillStyle = '#1d1428'; x.font = F(600, 17); x.fillText('Cell cycle', tx, y);
+    const parts = [['Sub-G1', cc.sub], ['G0/G1', cc.G1], ['S', cc.S], ['G2/M', cc.G2], ['>4N', cc.poly]];
+    y += M(28); x.font = `${Math.round(14 * u)}px "IBM Plex Mono", Consolas, monospace`; x.fillStyle = '#2c2338';
+    x.fillText(parts.map(([k, v]) => `${k} ${fmtN(100 * v / cc.total, 1)}%`).join('   '), tx, y);
+    y += M(22); x.fillStyle = '#62577a'; x.font = F(400, 13);
+    x.fillText(`G2/G1 ratio ${cc.ratio.toFixed(2)} · CV G0/G1 ${fmtN(100 * cc.cv1, 1)}%`, tx, y);
+  }
+  // plots
+  const px0 = M(48), pw = tx - M(32) - px0, n = panels.length;
+  const ncol = n <= 1 ? 1 : n <= 4 ? 2 : n <= 6 ? 3 : 4, nrow = Math.ceil(n / ncol), gap = M(16);
+  const cw = (pw - gap * (ncol - 1)) / ncol, ch = (bodyH - gap * (nrow - 1)) / nrow;
+  panels.forEach((p, i) => {
+    const img = renderPanelImage(p, Math.max(2, Math.min(4, 1000 / (p.size || 400))));
+    const k = Math.min(cw / img.width, ch / img.height), w = img.width * k, h = img.height * k;
+    const cx = px0 + (i % ncol) * (cw + gap) + (cw - w) / 2, cy = top + Math.floor(i / ncol) * (ch + gap);
+    x.imageSmoothingQuality = 'high'; x.drawImage(img, cx, cy, w, h);
+    x.strokeStyle = '#e0d8ea'; x.lineWidth = Math.max(1, M(1)); x.strokeRect(cx + .5, cy + .5, w - 1, h - 1);
+  });
+  x.fillStyle = '#8e83a6'; x.font = F(400, 12);
+  x.fillText(`SpectraFree ${APP_VERSION} · ${new Date().toLocaleString('en-GB', {dateStyle: 'medium', timeStyle: 'short'})} · for training and research use, not for diagnosis`, M(48), H - M(16));
+  return c;
+}
+function reportDetails(s){
+  const vol = sampleVol(s);
+  return [s.kw['$CYT'] && `Cytometer ${s.kw['$CYT']}`, s.kw['$DATE'] && `Acquired ${s.kw['$DATE']}`, `${nf.format(s.n)} events`,
+    vol && `${+vol.toPrecision(6)} µL analysed`, s.compChs?.size ? 'Compensated' : 'Not compensated'].filter(Boolean).join('  ·  ');
+}
+const jpegBytes = async c => new Uint8Array(await (await new Promise(r => c.toBlob(r, 'image/jpeg', 0.92))).arrayBuffer());
+// Renders one page per sample by switching the current sample, then switches back.
+async function forEachSampleReport(fn){
+  const orig = state.cur, n = state.samples.length, out = [];
+  hist.busy++;
+  try {
+    for (let i = 0; i < n; i++){
+      state.cur = i; const s = cur(); applyComp(s); computeMasks(s); updateCellCycle();
+      out.push(await fn(s, i, n));
+      await new Promise(r => setTimeout(r, 0));
+    }
+  } finally { hist.busy--; setCurrent(orig); }
+  return out;
+}
+async function exportReport(kind){
+  if (!state.samples.length) return;
+  const n = state.samples.length;
+  toast(`Building the ${kind === 'pdf' ? 'PDF' : 'PowerPoint'} report (${n} page${n === 1 ? '' : 's'})…`);
+  await new Promise(r => setTimeout(r, 30));
+  const name = `spectrafree-report-${today()}.${kind}`;
+  if (kind === 'pdf'){
+    const pages = await forEachSampleReport(async (s, i, n) => { const c = composeReportPage(2400, 1697, {page: i + 1, pages: n}); return {w: c.width, h: c.height, jpg: await jpegBytes(c)}; });
+    saveFile(name, buildPDF(pages, 842, 595), 'binary');
+  } else {
+    const slides = await forEachSampleReport(async s => { const c = composeReportPage(2400, 1190, {header: false}); return {title: s.name, sub: reportDetails(s), jpg: await jpegBytes(c), w: c.width, h: c.height}; });
+    saveFile(name, buildPPTX(slides), 'binary');
+  }
+}
+// Minimal PDF 1.4: each page is one JPEG image scaled to the page
+function buildPDF(pages, PW, PH){
+  const enc = new TextEncoder(), parts = [], offs = []; let len = 0;
+  const add = d => { const b = typeof d === 'string' ? enc.encode(d) : d; parts.push(b); len += b.length; };
+  const obj = (num, body) => { offs[num] = len; add(`${num} 0 obj\n`); body(); add('\nendobj\n'); };
+  const pdfStr = t => '(' + String(t).replace(/[\\()]/g, m => '\\' + m).replace(/[^\x20-\x7e]/g, '?') + ')';
+  add('%PDF-1.4\n'); add(new Uint8Array([37, 226, 227, 207, 211, 10])); // binary marker line
+  const N = pages.length, kids = pages.map((_, i) => `${4 + i * 3} 0 R`).join(' ');
+  obj(1, () => add('<< /Type /Catalog /Pages 2 0 R >>'));
+  obj(2, () => add(`<< /Type /Pages /Count ${N} /Kids [${kids}] >>`));
+  obj(3, () => add(`<< /Title ${pdfStr('SpectraFree report')} /Producer ${pdfStr('SpectraFree ' + APP_VERSION)} /CreationDate ${pdfStr('D:' + new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14))} >>`));
+  pages.forEach((pg, i) => {
+    const P = 4 + i * 3, k = Math.min(PW / pg.w, PH / pg.h), w = pg.w * k, h = pg.h * k, ox = (PW - w) / 2, oy = (PH - h) / 2;
+    const content = `q ${w.toFixed(2)} 0 0 ${h.toFixed(2)} ${ox.toFixed(2)} ${oy.toFixed(2)} cm /Im0 Do Q`;
+    obj(P, () => add(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PW} ${PH}] /Resources << /XObject << /Im0 ${P + 2} 0 R >> >> /Contents ${P + 1} 0 R >>`));
+    obj(P + 1, () => add(`<< /Length ${content.length} >>\nstream\n${content}\nendstream`));
+    obj(P + 2, () => { add(`<< /Type /XObject /Subtype /Image /Width ${pg.w} /Height ${pg.h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${pg.jpg.length} >>\nstream\n`); add(pg.jpg); add('\nendstream'); });
+  });
+  const xref = len, total = 4 + N * 3;
+  add(`xref\n0 ${total}\n0000000000 65535 f \n` + offs.slice(1).map(o => String(o).padStart(10, '0') + ' 00000 n \n').join(''));
+  add(`trailer\n<< /Size ${total} /Root 1 0 R /Info 3 0 R >>\nstartxref\n${xref}\n%%EOF\n`);
+  return new Blob(parts, {type: 'application/pdf'});
+}
+// Minimal PowerPoint package: 16:9, one slide per sample with an editable title and the report picture
+function buildPPTX(slides){
+  const enc = new TextEncoder(), xe = t => String(t).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'})[c]).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, '');
+  const H = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
+  const NS = 'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"';
+  const R = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+  const rels = list => H + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' + list.map(([id, type, target]) => `<Relationship Id="${id}" Type="${R}/${type}" Target="${target}"/>`).join('') + '</Relationships>';
+  const grp = '<p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>';
+  const CX = 12192000, CY = 6858000, E = 914400;
+  const files = [];
+  const put = (name, text) => files.push({name, data: typeof text === 'string' ? enc.encode(text) : text});
+  put('[Content_Types].xml', H + '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="jpeg" ContentType="image/jpeg"/>' +
+    '<Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/>' +
+    '<Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/>' +
+    '<Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>' +
+    '<Override PartName="/ppt/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>' +
+    slides.map((_, i) => `<Override PartName="/ppt/slides/slide${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>`).join('') +
+    '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/><Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/></Types>');
+  put('_rels/.rels', H + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+    `<Relationship Id="rId1" Type="${R}/officeDocument" Target="ppt/presentation.xml"/>` +
+    '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>' +
+    `<Relationship Id="rId3" Type="${R}/extended-properties" Target="docProps/app.xml"/></Relationships>`);
+  const now = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
+  put('docProps/core.xml', H + `<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:title>SpectraFree report</dc:title><dc:creator>SpectraFree</dc:creator><dcterms:created xsi:type="dcterms:W3CDTF">${now}</dcterms:created><dcterms:modified xsi:type="dcterms:W3CDTF">${now}</dcterms:modified></cp:coreProperties>`);
+  put('docProps/app.xml', H + `<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"><Application>SpectraFree ${APP_VERSION}</Application><Slides>${slides.length}</Slides></Properties>`);
+  put('ppt/presentation.xml', H + `<p:presentation ${NS} saveSubsetFonts="1"><p:sldMasterIdLst><p:sldMasterId id="2147483648" r:id="rId1"/></p:sldMasterIdLst><p:sldIdLst>` +
+    slides.map((_, i) => `<p:sldId id="${256 + i}" r:id="rId${3 + i}"/>`).join('') + `</p:sldIdLst><p:sldSz cx="${CX}" cy="${CY}"/><p:notesSz cx="6858000" cy="9144000"/></p:presentation>`);
+  put('ppt/_rels/presentation.xml.rels', rels([['rId1', 'slideMaster', 'slideMasters/slideMaster1.xml'], ['rId2', 'theme', 'theme/theme1.xml'], ...slides.map((_, i) => [`rId${3 + i}`, 'slide', `slides/slide${i + 1}.xml`])]));
+  put('ppt/slideMasters/slideMaster1.xml', H + `<p:sldMaster ${NS}><p:cSld><p:bg><p:bgRef idx="1001"><a:schemeClr val="bg1"/></p:bgRef></p:bg><p:spTree>${grp}</p:spTree></p:cSld><p:clrMap bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/><p:sldLayoutIdLst><p:sldLayoutId id="2147483649" r:id="rId1"/></p:sldLayoutIdLst><p:txStyles><p:titleStyle/><p:bodyStyle/><p:otherStyle/></p:txStyles></p:sldMaster>`);
+  put('ppt/slideMasters/_rels/slideMaster1.xml.rels', rels([['rId1', 'slideLayout', '../slideLayouts/slideLayout1.xml'], ['rId2', 'theme', '../theme/theme1.xml']]));
+  put('ppt/slideLayouts/slideLayout1.xml', H + `<p:sldLayout ${NS} type="blank" preserve="1"><p:cSld name="Blank"><p:spTree>${grp}</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sldLayout>`);
+  put('ppt/slideLayouts/_rels/slideLayout1.xml.rels', rels([['rId1', 'slideMaster', '../slideMasters/slideMaster1.xml']]));
+  const clr = (n, v) => `<a:${n}><a:srgbClr val="${v}"/></a:${n}>`, solid = v => `<a:solidFill><a:schemeClr val="${v}"/></a:solidFill>`;
+  const ln = w => `<a:ln w="${w}" cap="flat" cmpd="sng" algn="ctr">${solid('phClr')}<a:prstDash val="solid"/></a:ln>`;
+  put('ppt/theme/theme1.xml', H + `<a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" name="SpectraFree"><a:themeElements><a:clrScheme name="SpectraFree">` +
+    `<a:dk1><a:sysClr val="windowText" lastClr="000000"/></a:dk1><a:lt1><a:sysClr val="window" lastClr="FFFFFF"/></a:lt1>` + clr('dk2', '1D1428') + clr('lt2', 'F7F4FB') + clr('accent1', '6B33C4') + clr('accent2', '1F9D6A') + clr('accent3', 'D99A12') + clr('accent4', '2F63D6') + clr('accent5', 'D2462B') + clr('accent6', '62577A') + clr('hlink', '6B33C4') + clr('folHlink', '4B2479') +
+    `</a:clrScheme><a:fontScheme name="SpectraFree"><a:majorFont><a:latin typeface="Segoe UI"/><a:ea typeface=""/><a:cs typeface=""/></a:majorFont><a:minorFont><a:latin typeface="Segoe UI"/><a:ea typeface=""/><a:cs typeface=""/></a:minorFont></a:fontScheme>` +
+    `<a:fmtScheme name="SpectraFree"><a:fillStyleLst>${solid('phClr')}${solid('phClr')}${solid('phClr')}</a:fillStyleLst><a:lnStyleLst>${ln(6350)}${ln(12700)}${ln(19050)}</a:lnStyleLst>` +
+    `<a:effectStyleLst><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/></a:effectStyle></a:effectStyleLst><a:bgFillStyleLst>${solid('phClr')}${solid('phClr')}${solid('phClr')}</a:bgFillStyleLst></a:fmtScheme></a:themeElements><a:objectDefaults/><a:extraClrSchemeLst/></a:theme>`);
+  const tb = (id, name, x, y, w, h, text, sz, bold, col) => `<p:sp><p:nvSpPr><p:cNvPr id="${id}" name="${name}"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="${x}" y="${y}"/><a:ext cx="${w}" cy="${h}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/></p:spPr>` +
+    `<p:txBody><a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="t"><a:normAutofit/></a:bodyPr><a:lstStyle/><a:p><a:r><a:rPr lang="en-GB" sz="${sz}" b="${bold ? 1 : 0}" dirty="0"><a:solidFill><a:srgbClr val="${col}"/></a:solidFill><a:latin typeface="Segoe UI"/></a:rPr><a:t>${xe(text)}</a:t></a:r></a:p></p:txBody></p:sp>`;
+  slides.forEach((sl, i) => {
+    const mx = Math.round(0.33 * E), top = Math.round(1.05 * E), aw = CX - 2 * mx, ah = CY - top - Math.round(0.12 * E);
+    const k = Math.min(aw / sl.w, ah / sl.h), w = Math.round(sl.w * k), h = Math.round(sl.h * k), ox = mx + Math.round((aw - w) / 2);
+    put(`ppt/slides/slide${i + 1}.xml`, H + `<p:sld ${NS}><p:cSld><p:spTree>${grp}` +
+      tb(2, 'Title', mx, Math.round(0.28 * E), aw, Math.round(0.45 * E), sl.title, 2400, true, '1D1428') +
+      tb(3, 'Details', mx, Math.round(0.7 * E), aw, Math.round(0.3 * E), sl.sub, 1200, false, '62577A') +
+      `<p:pic><p:nvPicPr><p:cNvPr id="4" name="Plots and statistics"/><p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr/></p:nvPicPr><p:blipFill><a:blip r:embed="rId2"/><a:stretch><a:fillRect/></a:stretch></p:blipFill>` +
+      `<p:spPr><a:xfrm><a:off x="${ox}" y="${top}"/><a:ext cx="${w}" cy="${h}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic>` +
+      `</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>`);
+    put(`ppt/slides/_rels/slide${i + 1}.xml.rels`, rels([['rId1', 'slideLayout', '../slideLayouts/slideLayout1.xml'], ['rId2', 'image', `../media/image${i + 1}.jpeg`]]));
+    put(`ppt/media/image${i + 1}.jpeg`, sl.jpg);
+  });
+  const z = makeZip(files);
+  return new Blob([z], {type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation'});
+}
 
 /* ---------------- Export and plot menus ---------------- */
 function openMenu(html, label, cx, cy, onPick, returnFocus, wide){
@@ -2547,6 +3143,7 @@ function openExportMenu(){
     `<div class="msep" role="separator"></div><div class="mhead">Events in ${esc(pop)}</div>` +
     mitem('fcs', 'As an FCS file') + mitem('csv', 'As a table (.csv)') +
     `<div class="mnote">From ${esc(s.name)}. Select a gate first to export just its events.</div>` +
+    `<div class="msep" role="separator"></div><div class="mhead">Reports, one page per sample</div>` + mitem('rep-pdf', 'PDF report (.pdf)') + mitem('rep-pptx', 'PowerPoint, one slide per sample (.pptx)') +
     `<div class="msep" role="separator"></div><div class="mhead">Pictures</div>` + mitem('plots', 'All plots as one image (.png)') +
     `<div class="mnote">Right-click any plot to copy it for Word, PowerPoint or Excel.</div>` +
     `<div class="msep" role="separator"></div><div class="mhead">Workspace</div>` + mitem('ws-save', 'Save workspace (.json)') + mitem('ws-open', 'Open workspace…') +
@@ -2554,16 +3151,55 @@ function openExportMenu(){
   openMenu(html, 'Export', Math.max(8, b.right - 340), b.bottom + 6, v => {
     if (v === 'stats') exportStats(); else if (v === 'cc') exportCellCycle();
     else if (v === 'fcs' || v === 'csv') exportEvents(v); else if (v === 'plots') exportAllPlots();
+    else if (v === 'rep-pdf') exportReport('pdf'); else if (v === 'rep-pptx') exportReport('pptx');
     else if (v === 'ws-save') saveWorkspace(); else if (v === 'ws-open') $('#wsFile').click();
   }, $('#exportBtn'), true);
 }
 $('#exportBtn').addEventListener('click', e => { e.stopPropagation(); if (!axisMenu.hidden && menuCtx?.returnFocus === $('#exportBtn')){ closeAxisMenu(); return; } openExportMenu(); });
+const mradio = (v, label, on) => `<button type="button" role="menuitemradio" aria-checked="${!!on}" data-v="${esc(v)}">${esc(label)}</button>`;
+const mcheck = (v, label, on) => `<button type="button" role="menuitemcheckbox" aria-checked="${!!on}" data-v="${esc(v)}">${esc(label)}</button>`;
 function openPlotMenu(p, cx, cy){
-  const pop = popName(p.pop);
-  const html = `<div class="mhead">Plot ${esc(p.key)}</div>` + mitem('copy', 'Copy plot (for Word, PowerPoint, Excel)') + mitem('png', 'Save plot as PNG') +
-    `<div class="msep" role="separator"></div><div class="mhead">Events in ${esc(pop)}</div>` + mitem('fcs', 'Export as FCS') + mitem('csv', 'Export as a table (.csv)');
+  const pop = popName(p.pop), s = cur();
+  let html = `<div class="mhead">Plot ${esc(p.key)}</div>` + mitem('copy', 'Copy plot (for Word, PowerPoint, Excel)') + mitem('png', 'Save plot as PNG');
+  if (!p.isHist) html += `<div class="msep" role="separator"></div><div class="mhead">Style</div>` + PLOT_STYLES.map(([v, l]) => mradio('st:' + v, l, (p.style || 'density') === v)).join('');
+  html += `<div class="msep" role="separator"></div><div class="mhead">Show</div>`;
+  if (p.isHist && state.samples.length > 1) html += mitem('overlay', `Overlay samples…${p.overlay?.length ? ` (${p.overlay.length})` : ''}`);
+  html += mitem('backgate', p.backgate != null ? `Backgate: ${popName(p.backgate)}…` : 'Backgate a population…');
+  if (!p.isHist && s) html += `<div class="msep" role="separator"></div><div class="mhead">Auto-gate on this plot</div>` +
+    mitem('auto-cells', 'Main cell population') + mitem('auto-singlets', 'Singlets (area against height)');
+  if (p.zoomed) html += mitem('unzoom', 'Reset zoom');
+  html += `<div class="msep" role="separator"></div><div class="mhead">Events in ${esc(pop)}</div>` + mitem('fcs', 'Export as FCS') + mitem('csv', 'Export as a table (.csv)');
   openMenu(html, `Plot ${p.key}`, cx, cy, v => {
     if (v === 'copy') copyPlot(p); else if (v === 'png') savePlot(p); else if (v === 'fcs' || v === 'csv') exportEvents(v, p.pop);
+    else if (v.startsWith('st:')){ p.style = v.slice(3); p.draw(); markChange(); }
+    else if (v === 'overlay') openOverlayMenu(p, cx, cy);
+    else if (v === 'backgate') openBackgateMenu(p, cx, cy);
+    else if (v === 'unzoom') p.resetZoom();
+    else if (v === 'auto-cells') autoGateCells(p);
+    else if (v === 'auto-singlets') autoGateSinglets(p);
+  }, p.over, true);
+}
+function openOverlayMenu(p, cx, cy){
+  const s = cur(), on = new Set(p.overlay || []);
+  const html = `<div class="mhead">Overlay on plot ${esc(p.key)}</div><div class="mnote">${esc(s.name)} is drawn filled; ticked samples are drawn as lines, in the same population.</div>` +
+    state.samples.filter(x => x !== s).map(x => mcheck('s:' + x.name, x.name, on.has(x.name))).join('') +
+    `<div class="msep" role="separator"></div>` + mcheck('norm', 'Normalise to mode (each curve’s peak = 100%)', p.norm) +
+    (on.size ? mitem('clear', 'Clear overlays') : '') + mitem('done', 'Done');
+  openMenu(html, `Overlay samples on plot ${p.key}`, cx, cy, v => {
+    if (v === 'done') return;
+    if (v === 'clear') p.overlay = [];
+    else if (v === 'norm') p.norm = !p.norm;
+    else if (v.startsWith('s:')){ const n = v.slice(2); p.overlay = on.has(n) ? p.overlay.filter(x => x !== n) : [...(p.overlay || []), n].slice(0, 8); }
+    p.draw(); markChange();
+    openOverlayMenu(p, cx, cy);
+    axisMenu.querySelector(`[data-v="${CSS.escape(v)}"]`)?.focus();
+  }, p.over, true);
+}
+function openBackgateMenu(p, cx, cy){
+  const html = `<div class="mhead">Backgate on plot ${esc(p.key)}</div><div class="mnote">Highlights a population's events in colour, so you can see where they sit on this plot.</div>` +
+    mradio('none', 'None', p.backgate == null) + treeOrder().map(({g, depth}) => mradio('g:' + g.id, '\u2003'.repeat(depth - 1) + g.name, p.backgate === g.id)).join('');
+  openMenu(html, `Backgate on plot ${p.key}`, cx, cy, v => {
+    p.backgate = v === 'none' ? null : +v.slice(2); p.draw(); markChange();
   }, p.over, true);
 }
 
@@ -2592,6 +3228,7 @@ function addPanel(opts = {}){
   const at = after ? panels.indexOf(after) + 1 : 0;
   panels.splice(at, 0, p);
   p.pop = opts.pop ?? (state.sel != null && gateById(state.sel) ? state.sel : 'all');
+  if (opts.activate) ui.active = key;
   if (cur()){ p.fillChannels(); p.fillPops(); p.resize(); }
   syncPlotButtons();
   markChange();
@@ -2606,11 +3243,161 @@ function removePanel(p, force){
   markChange();
 }
 function syncPlotButtons(){
+  syncActive(); renderTree();
   panels.forEach(p => { p.removeBtn.hidden = panels.length <= 1; });
   $('#addPlot').disabled = panels.length >= MAX_PLOTS;
   $('#plotHint').textContent = panels.length >= MAX_PLOTS ? `Up to ${MAX_PLOTS} plots.` : 'New plots show the selected gate\'s population.';
 }
-$('#addPlot').addEventListener('click', () => { const p = addPanel(); p?.el.scrollIntoView({behavior: 'smooth', block: 'nearest'}); });
+$('#addPlot').addEventListener('click', () => { const p = addPanel({activate: true}); p?.el.scrollIntoView({behavior: 'smooth', block: 'nearest'}); });
+
+
+/* ---------------- Sidebar: samples and gate tree ---------------- */
+const ui = {active: null, collapsed: new Set()};
+const activePanel = () => panels.find(p => p.key === ui.active) || panels[0] || null;
+function setActive(p){
+  if (!p || ui.active === p.key) return;
+  ui.active = p.key; panels.forEach(q => q.el.classList.toggle('active', q === p)); renderTree();
+}
+function syncActive(){ const a = activePanel(); if (a) ui.active = a.key; panels.forEach(q => q.el.classList.toggle('active', q === a)); }
+function renderSamples(){
+  const L = $('#sampleList'); if (!L) return;
+  $('#sampleCount').textContent = state.samples.length ? String(state.samples.length) : '';
+  L.innerHTML = state.samples.map((x, k) => `<li><button type="button" class="sitem" data-k="${k}" aria-current="${k === state.cur}" title="${esc(x.name)}"><span class="sname">${esc(x.name.replace(/^Example: /, ''))}</span><span class="sn">${fmtSI(x.n)}</span></button></li>`).join('');
+  renderVolume();
+}
+$('#sampleList').addEventListener('click', e => { const b = e.target.closest('.sitem'); if (b && +b.dataset.k !== state.cur) setCurrent(+b.dataset.k); });
+const EYE = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
+function renderTree(){
+  const T = $('#gateTree'); if (!T) return;
+  const s = cur(), a = activePanel(), order = treeOrder();
+  $('#gateCount').textContent = state.gates.length ? String(state.gates.length) : '';
+  if (!s){ T.innerHTML = ''; return; }
+  const kids = new Set(state.gates.map(g => g.parent ?? 'all'));
+  const hiddenBy = g => { for (let q = g.parent; q != null; q = gateById(q)?.parent) if (ui.collapsed.has(q)) return true; return ui.collapsed.has('all'); };
+  const row = (id, name, depth, c, pc) => {
+    const has = kids.has(id), open = !ui.collapsed.has(id), shown = a && a.pop === id;
+    return `<div class="trow" role="treeitem" tabindex="-1" data-id="${id}" aria-level="${depth}" aria-selected="${state.sel === id}"${has ? ` aria-expanded="${open}"` : ''} style="padding-left:${(depth - 1) * 12}px">` +
+      `<button type="button" class="tcaret${has ? '' : ' leaf'}" data-tog="${id}" tabindex="-1" aria-label="${open ? 'Collapse' : 'Expand'} ${esc(name)}">${open ? '▼' : '▶'}</button>` +
+      `<span class="tname" title="${esc(name)}">${esc(name)}</span><span class="tnum">${fmtSI(c)}</span><span class="tpct">${pc == null ? '' : fmtN(pc, 1) + '%'}</span>` +
+      `<button type="button" class="tshow" data-show="${id}" tabindex="-1" aria-pressed="${shown}" title="Show ${esc(name)} in plot ${a ? a.key : ''}" aria-label="Show ${esc(name)} in plot ${a ? a.key : ''}">${EYE}</button></div>`;
+  };
+  let html = row('all', 'All events', 1, s.n, null);
+  for (const {g, depth} of order){
+    if (hiddenBy(g)) continue;
+    const c = popCount(s, g.id), par = popCount(s, g.parent ?? 'all');
+    html += row(g.id, g.name, depth + 1, c, par ? 100 * c / par : 0);
+  }
+  T.innerHTML = html;
+  const first = T.querySelector('.trow[aria-selected="true"]') || T.querySelector('.trow'); if (first) first.tabIndex = 0;
+  $('#treeHint').textContent = state.gates.length ? `Click a gate to select it. The eye shows that population in plot ${a ? a.key : ''} (the active plot).` : 'Draw a gate on a plot to start the hierarchy.';
+}
+const treeId = v => v === 'all' ? 'all' : +v;
+function showInActive(id){
+  const p = activePanel(); if (!p) return;
+  p.pop = id; p.fillPops(); p.draft = null; p.draw(); renderTree(); markChange(`show ${popName(id)} in plot ${p.key}`);
+}
+$('#gateTree').addEventListener('click', e => {
+  const tog = e.target.closest('[data-tog]'), show = e.target.closest('[data-show]'), r = e.target.closest('.trow');
+  if (tog){ const id = treeId(tog.dataset.tog); ui.collapsed.has(id) ? ui.collapsed.delete(id) : ui.collapsed.add(id); renderTree(); return; }
+  if (show){ showInActive(treeId(show.dataset.show)); return; }
+  if (r){ const id = treeId(r.dataset.id); selectGate(id === 'all' ? null : id); $('#gateTree').querySelector(`.trow[data-id="${r.dataset.id}"]`)?.focus(); }
+});
+$('#gateTree').addEventListener('dblclick', e => { const r = e.target.closest('.trow'); if (r && !e.target.closest('button')) showInActive(treeId(r.dataset.id)); });
+$('#gateTree').addEventListener('keydown', e => {
+  const rows = [...$('#gateTree').querySelectorAll('.trow')], r = e.target.closest('.trow'), i = rows.indexOf(r); if (i < 0) return;
+  const id = treeId(r.dataset.id), go = j => { const t = rows[Math.max(0, Math.min(rows.length - 1, j))]; rows.forEach(x => x.tabIndex = -1); t.tabIndex = 0; t.focus(); };
+  if (e.key === 'ArrowDown'){ e.preventDefault(); go(i + 1); }
+  else if (e.key === 'ArrowUp'){ e.preventDefault(); go(i - 1); }
+  else if (e.key === 'ArrowRight' && r.hasAttribute('aria-expanded')){ e.preventDefault(); e.stopPropagation(); if (ui.collapsed.delete(id)){ renderTree(); $('#gateTree').querySelector(`.trow[data-id="${r.dataset.id}"]`)?.focus(); } else go(i + 1); }
+  else if (e.key === 'ArrowLeft'){ e.preventDefault(); e.stopPropagation(); if (r.getAttribute('aria-expanded') === 'true'){ ui.collapsed.add(id); renderTree(); $('#gateTree').querySelector(`.trow[data-id="${r.dataset.id}"]`)?.focus(); } }
+  else if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); e.shiftKey || e.key === 'Enter' && e.altKey ? showInActive(id) : (selectGate(id === 'all' ? null : id), $('#gateTree').querySelector(`.trow[data-id="${r.dataset.id}"]`)?.focus()); }
+  else if (e.key.toLowerCase() === 's' && !e.ctrlKey && !e.metaKey){ e.preventDefault(); e.stopPropagation(); showInActive(id); }
+});
+$('#volInput').addEventListener('change', e => { const s = cur(); if (s) setVolume(s, e.target.value); });
+
+/* ---------------- Tabs ---------------- */
+const TABS = ['pop', 'comp', 'cc', 'names', 'kw'];
+const store = {get(k){ try { return localStorage.getItem(k); } catch (e){ return null; } }, set(k, v){ try { localStorage.setItem(k, v); return true; } catch (e){ return false; } }, del(k){ try { localStorage.removeItem(k); } catch (e){} }};
+function setTab(id, focus){
+  if (!TABS.includes(id)) id = 'pop';
+  for (const t of TABS){
+    const b = $('#tab-' + t), on = t === id;
+    b.setAttribute('aria-selected', String(on)); b.tabIndex = on ? 0 : -1; $('#pane-' + t).hidden = !on;
+  }
+  if (focus) $('#tab-' + id).focus();
+  store.set('sf-tab', id);
+}
+document.querySelector('.tabs').addEventListener('click', e => { const b = e.target.closest('[role=tab]'); if (b) setTab(b.id.slice(4)); });
+document.querySelector('.tabs').addEventListener('keydown', e => {
+  const i = TABS.indexOf(document.activeElement?.id?.slice(4)); if (i < 0) return;
+  const k = {ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: TABS.length - 1}[e.key]; if (k === undefined) return;
+  e.preventDefault(); e.stopPropagation(); setTab(TABS[(k + TABS.length) % TABS.length], true);
+});
+
+/* ---------------- Theme ---------------- */
+const sysDark = matchMedia('(prefers-color-scheme: dark)');
+function applyTheme(t){
+  const root = document.documentElement;
+  if (t === 'light' || t === 'dark') root.setAttribute('data-theme', t); else root.removeAttribute('data-theme');
+  const dark = t ? t === 'dark' : sysDark.matches, b = $('#themeBtn');
+  b.classList.toggle('dark', dark); b.setAttribute('aria-label', dark ? 'Switch to light theme' : 'Switch to dark theme'); b.title = b.getAttribute('aria-label');
+  redraw();
+}
+$('#themeBtn').addEventListener('click', () => {
+  const dark = $('#themeBtn').classList.contains('dark'), t = dark ? 'light' : 'dark';
+  // choosing the system's own theme goes back to following the system
+  if ((t === 'dark') === sysDark.matches){ store.del('sf-theme'); applyTheme(null); } else { store.set('sf-theme', t); applyTheme(t); }
+});
+sysDark.addEventListener('change', () => { if (!store.get('sf-theme')) applyTheme(null); });
+
+/* ---------------- Keyboard shortcuts ---------------- */
+const TOOL_KEYS = {v: 'select', r: 'rect', p: 'poly', q: 'quad', g: 'range', z: 'zoom'};
+document.addEventListener('keydown', e => {
+  if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
+  const t = e.target, tag = t.tagName;
+  if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA' || t.isContentEditable || !axisMenu.hidden || !$('#modal').hidden) return;
+  if (t.closest?.('#gateTree, .tabs, [role=tablist]') && e.key.startsWith('Arrow')) return;
+  const p = activePanel(), k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  if (p && TOOL_KEYS[k]){
+    const want = TOOL_KEYS[k];
+    if (want === 'range' && !p.isHist || (['rect', 'poly', 'quad'].includes(want) && p.isHist)){ toast(want === 'range' ? 'Range gates are drawn on histograms. Press H to switch.' : 'Switch to a dot plot (H) to draw this gate.'); return; }
+    e.preventDefault(); p.setTool(want); return;
+  }
+  if (p && k === '0'){ e.preventDefault(); p.resetZoom(); return; }
+  if (p && k === 'h'){ e.preventDefault(); p.setType(p.isHist ? 'dot' : 'hist'); return; }
+  if ((k === 'ArrowLeft' || k === 'ArrowRight') && (t === document.body || tag === 'CANVAS' || t.closest?.('.side, .samplebar')) && !t.closest?.('#gateTree')){ e.preventDefault(); stepSample(k === 'ArrowLeft' ? -1 : 1); }
+});
+
+/* ---------------- Autosave ---------------- */
+const AUTOSAVE = 'sf-autosave-v1';
+let autosaveTimer = null, prevSession = null;
+function scheduleAutosave(){
+  clearTimeout(autosaveTimer);
+  autosaveTimer = setTimeout(() => {
+    if (!state.samples.length) return;
+    store.set(AUTOSAVE, JSON.stringify({at: Date.now(), ws: workspaceObject()}));
+  }, 800);
+}
+function offerRestore(){
+  let saved = null; try { saved = JSON.parse(store.get(AUTOSAVE) || 'null'); } catch (e){ saved = null; }
+  if (!saved?.ws || !Array.isArray(saved.ws.gates)) return;
+  prevSession = saved;
+  const g = saved.ws.gates.length, pl = saved.ws.plots?.length || 0, when = new Date(saved.at);
+  const date = isNaN(when) ? 'earlier' : when.toLocaleString(undefined, {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'});
+  const own = (saved.ws.samples || []).some(n => !/^Example: /.test(n));
+  $('#restoreText').textContent = `Your last session (${date}: ${g} gate${g === 1 ? '' : 's'}, ${pl} plot${pl === 1 ? '' : 's'}) was saved in this browser.` +
+    (own ? ' Open the same FCS files first, then restore it.' : ' Restore it?');
+  $('#restoreBar').hidden = false;
+}
+$('#restoreBtn').addEventListener('click', () => {
+  $('#restoreBar').hidden = true; if (!prevSession) return;
+  let w; try { w = cleanWorkspace(prevSession.ws); } catch (e){ showMsg(`Couldn't restore the last session: ${e.message}`, false); return; }
+  restoreSnapshot(w.snap);
+  if (w.statCh && cur() && w.statCh in cur().idx){ state.statCh = w.statCh; fillStatSel(); renderTable(); }
+  markChange('restore last session');
+  toast('Last session restored. Undo takes it back.');
+});
+$('#restoreNo').addEventListener('click', () => { $('#restoreBar').hidden = true; });
 
 /* ---------------- Start ---------------- */
 panels = [];
@@ -2634,6 +3421,10 @@ addPanel({pop: 'all'}); addPanel({pop: 'all'});
   detectControls();
   setCurrent(0);
   resetHistory();
+  syncActive();
+  setTab(store.get('sf-tab') || 'pop');
+  const th = store.get('sf-theme'); applyTheme(th === 'light' || th === 'dark' ? th : null);
+  offerRestore();
 })();
 </script>
 </body>

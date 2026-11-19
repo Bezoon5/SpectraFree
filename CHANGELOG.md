@@ -2,6 +2,25 @@
 
 All notable changes to SpectraFree are recorded here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/).
 
+## [1.3.0] - 2026-11-19
+
+### Added
+- Workspace layout: a sidebar with the sample list and a collapsible gate tree (counts, % of parent; click to select, the eye shows a population in the active plot), and tabs for Populations, Compensation, Cell cycle, Channel names and File keywords.
+- Zoom: a Zoom tool (drag a box), Reset zoom, and Set range… / Reset range in the axis menu. Ticks, density binning, histograms and gates follow the zoom; gates drawn on a zoomed border keep finite edges. Saved in undo history and workspaces.
+- Histogram overlays: other samples drawn as coloured lines in the same population, with a legend and Normalise to mode.
+- Backgating: highlight any population on any plot (the rest of the plot turns grey).
+- Plot styles: density, contour (marching squares on smoothed density, outliers as dots), dots and greyscale.
+- One-click gates: main cell population (densest cluster, outlined at 12% of peak density) and singlets (area/height wedge).
+- Absolute counts: events per µL from `$VOL` or a volume typed per sample, in the population table and statistics export. Example tubes carry `$VOL` (25 µL).
+- Batch reports: one page per sample as PDF or PowerPoint (.pptx, 16:9, editable slide titles), with plots, the population table and cell-cycle results when available.
+- Keyboard shortcuts: V, R, P, Q, G, Z for tools on the active plot, 0 to reset zoom, H to switch dot plot / histogram, ← → for samples.
+- Light/dark theme button (remembered in the browser; choosing the system's theme goes back to following the system).
+- Autosave of gates, plots and settings in the browser, with a Restore bar next time.
+
+### Changed
+- The page is wider (up to 1,600 px) to fit the sidebar; on narrow screens the sidebar moves below the plots.
+- Each plot's remove button sits next to its name.
+
 ## [1.2.0] - 2026-11-19
 
 ### Added
