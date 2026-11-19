@@ -120,6 +120,20 @@ Eight synthetic tubes load on first open, labelled **Example**. They are generat
 | Cell cycle, untreated (PI) | Doublet discrimination and a normal cell-cycle profile |
 | Cell cycle, G2/M arrest (PI) | A drug-arrested profile for comparison |
 
+A second set, **11-colour T-cell activation**, is one click away in the sidebar (**Example data**). It follows a typical 5-laser activation panel:
+
+| Laser | Marker | Dye |
+|---|---|---|
+| UV 355 nm | HLA-DR, CD3, CD25 | BUV395, BUV496, BUV615 |
+| Violet 405 nm | CD137 (4-1BB), CD69, CD8 | BV421, BV480, BV750 |
+| Blue 488 nm | CD4, viability | FITC, 7-AAD |
+| Yellow-green 561 nm | CD38, CD134 (OX40) | PE, PE-Cy7 |
+| Red 640 nm | CD154 (CD40L) | APC |
+
+It has a stimulated and an unstimulated tube (50,000 events each), an unstained control and 11 single stains, with a built-in 11 × 11 spillover matrix and photon-counting noise (so compensated populations spread, as on a real instrument). Eight plots come ready gated: lymphocytes → singlets → live CD3+ → CD4+ / CD8+ → CD69 × CD25, OX40 × CD40L, 4-1BB × CD69 and CD38 × HLA-DR quadrants. Stimulated CD4 T cells are about 65% CD69+ CD25+, against about 2% unstimulated.
+
+![Activation-marker quadrants for the stimulated tube: CD69 against CD25 and OX40 against CD40L on CD4 T cells, 4-1BB against CD69 and CD38 against HLA-DR on CD8 T cells](docs/screenshots/tcell-panel.png)
+
 The example tubes and their gates are removed as soon as you open your own files.
 
 ## Validation
@@ -132,6 +146,8 @@ The automated checks in [`tests/smoke.mjs`](tests/smoke.mjs) run the app in a he
 | PE → PerCP spillover | 18.0% | 18.2% |
 | PerCP → APC spillover | 8.0% | 8.6% |
 | Control tubes found with meaningless file names | 5 of 5 | 5 of 5 |
+| 11-colour panel: control tubes found | 12 of 12 | 12 of 12 |
+| 11-colour panel: largest error in any of the 110 spillover values | — | 0.07 percentage points |
 | Untreated cell cycle: G0/G1 / S / G2/M | 55.2 / 21.7 / 12.8% | 55.9 / 20.9 / 14.0% |
 | Arrested cell cycle: G0/G1 / S / G2/M | 16.8 / 12.8 / 51.3% | 17.1 / 12.2 / 52.5% |
 | FCS reading: float, 16-bit integer, log-amplified, FCS 2.0, escaped delimiters | correct values | correct values |
@@ -144,6 +160,7 @@ The automated checks in [`tests/smoke.mjs`](tests/smoke.mjs) run the app in a he
 - Data types I (8, 16 and 32-bit integers), F (32-bit float) and D (64-bit float), little- or big-endian
 - `$PnE` log amplification, `$PnG` gain, `$PnR` range masking
 - `$SPILLOVER`, `$SPILL` and `SPILL` matrices
+- Any number of parameters, with any cytometer's channel names: FL1-A style or fluorochrome-named detectors (BUV395-A, BV421-A, PE-Cy7-A…). Large compensation matrices get the full page width.
 
 ## Limitations
 

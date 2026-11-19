@@ -285,6 +285,35 @@ try {
   check('tabs switch the visible section', await page.evaluate(() => !$('#pane-comp').hidden && $('#pane-pop').hidden));
   await page.close();
 
+  // ---------- 1.4: 11-colour T-cell activation example
+  page = await freshPage();
+  const tc = await page.evaluate(() => {
+    const o = {};
+    loadExampleSet('tcell');
+    o.tubes = state.samples.length; o.plots = panels.length; o.compOn = state.comp.on;
+    const pct = (s, name) => { const g = state.gates.find(x => x.name === name); return 100 * popCount(s, g.id) / popCount(s, g.parent ?? 'all'); };
+    o.singlets = pct(cur(), 'Singlets');
+    o.stimAct = pct(cur(), 'Q2 CD69+ CD25+');
+    setCurrent(1); o.unstimAct = pct(cur(), 'Q2 CD69+ CD25+');
+    const rep = detectControls();
+    o.found = rep.filter(r => r.x && r.x.name.toLowerCase().includes(r.ch === 'Unstained' ? 'unstained' : r.ch.replace(/-A$/, '').toLowerCase())).length;
+    calcFromControls({silent: true});
+    const names = TC_CH.map(c => c[0]); let worst = 0;
+    names.forEach((a, i) => names.forEach((b, j) => { if (i !== j) worst = Math.max(worst, Math.abs((state.comp.S[a + '|' + b] || 0) - TC_SPILL[i][j])); }));
+    o.worst = worst;
+    loadExampleSet('accuri'); o.back = state.samples.length === 8 && state.gates.length === 3;
+    return o;
+  });
+  check('T-cell example loads 14 tubes and 8 plots', tc.tubes === 14 && tc.plots === 8);
+  check('T-cell example starts compensated with the matrix from the files', tc.compOn);
+  check('T-cell singlets gate keeps the singlets', tc.singlets > 90, tc.singlets.toFixed(1) + '%');
+  check('stimulated CD4 cells are mostly CD69+ CD25+', tc.stimAct > 50, tc.stimAct.toFixed(1) + '%');
+  check('unstimulated CD4 cells are rarely CD69+ CD25+', tc.unstimAct < 10, tc.unstimAct.toFixed(1) + '%');
+  check('finds all 12 control tubes for 11 colours (PE not confused with PE-Cy7)', tc.found === 12, `${tc.found} of 12`);
+  check('11-colour auto-compensation within 1 percentage point everywhere', tc.worst < 0.01, (100 * tc.worst).toFixed(2) + ' points worst');
+  check('switching back to the 4-colour example works', tc.back);
+  await page.close();
+
   check('no JavaScript errors', errors.length === 0, errors.slice(0, 3).join(' | '));
 } finally {
   await browser.close();

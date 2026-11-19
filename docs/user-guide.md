@@ -9,6 +9,7 @@ A hands-on walkthrough using the example data that loads when you first open Spe
 - [5. Names, pictures and exports](#5-names-pictures-and-exports)
 - [6. Working with your own files](#6-working-with-your-own-files)
 - [7. Viewing tools: zoom, overlays, backgating, styles](#7-viewing-tools-zoom-overlays-backgating-styles)
+- [8. A multicolour experiment: T-cell activation](#8-a-multicolour-experiment-t-cell-activation)
 - [Keyboard and mouse reference](#keyboard-and-mouse-reference)
 - [Glossary](#glossary)
 
@@ -148,6 +149,26 @@ Right-click a dot plot → **Auto-gate on this plot**:
 - **Singlets** draws a wedge around the main area/height ratio. It uses the plot's channels if they are an -A / -H pair, and otherwise switches the plot to FSC-A against FSC-H.
 
 Both make ordinary gates: adjust them with the handles, or undo.
+
+## 8. A multicolour experiment: T-cell activation
+
+In the sidebar, set **Example data** to **11-colour T-cell activation**. Fourteen tubes load: stimulated and unstimulated samples, an unstained control, and one single stain for each of the 11 dyes (HLA-DR BUV395, CD3 BUV496, CD25 BUV615, CD137 BV421, CD69 BV480, CD8 BV750, CD4 FITC, viability 7-AAD, CD38 PE, CD134 PE-Cy7, CD154 APC).
+
+### 8.1 Follow the gating strategy
+The eight plots are a complete strategy, top to bottom: **Lymphocytes** (FSC/SSC) → **Singlets** (FSC-A/FSC-H) → **Live CD3+** (7-AAD against CD3) → **CD4+** and **CD8+** → four quadrant plots of activation markers. Open the gate tree in the sidebar to see the same hierarchy with counts.
+
+### 8.2 Compare stimulated and unstimulated
+Click between the two tubes in the sample list. On CD4 T cells, CD69+ CD25+ goes from about 2% to about 65%; OX40 and CD40L appear only after stimulation; on CD8 T cells, 4-1BB comes up with CD69. Notice CD3 getting dimmer on activated cells (it is internalised), and activated cells getting larger on FSC.
+
+### 8.3 See what compensation does
+1. In the **Compensation** tab, untick **Apply compensation**. Watch plot H: PE (CD38) spills 18% into the 7-AAD detector, so CD38-bright cells drift towards the dead-cell gate in plot C. In plot G, BV421 (4-1BB) spills 18% into BV480 (CD69) and the quadrants tilt.
+2. Tick it again, then press **Auto-compensate**. It finds all 12 control tubes and recalculates the 11 × 11 matrix; compare it with the matrix stored in the files (**Use matrix from file**).
+![The 11 × 11 spillover matrix for the T-cell panel](screenshots/tcell-matrix.png)
+
+3. Look at the spread of compensated populations around zero, wider for bright neighbouring dyes. That is spreading error from photon-counting noise, and compensation cannot remove it.
+
+### 8.4 Report it
+**Export → PDF report** gives one page per tube, with all eight plots and the population table.
 
 ## Keyboard and mouse reference
 

@@ -51,7 +51,7 @@ Everything is in `index.html`, in this order:
 | `Absolute counts` / `Auto-gates` | `sampleVol`, `setVolume`; `autoGateCells` (densest connected cluster → convex hull), `autoGateSinglets` |
 | `Compensation` | `applyComp`, `calcFromControls`, `autoCellMask`, `detectControls` |
 | `Cell cycle` | `fitCellCycle`, `singletWedge`, `runCellCycle`, results |
-| `Example data` | `writeFCS`, `makeTube`, `makeCellCycleTube` (synthetic tubes, seeded) |
+| `Example data` | `writeFCS`, `makeTube`, `makeCellCycleTube`, and the 11-colour panel (`TC_CH`, `TC_SPILL`, `makeTCellTube`); all seeded so they are the same every time |
 | `Channel names` | `setLabel`, the Channel names table, the rename form in the axis menu |
 | `Files out` / `Exports` | `saveFile` (viewer downloads or browser download), `makeZip`, `buildFCS`, CSV helpers, statistics / events / cell-cycle exports |
 | `Plot pictures` | `renderPanelImage` (high-resolution light-theme render), copy to clipboard, PNG export |
@@ -60,7 +60,7 @@ Everything is in `index.html`, in this order:
 | `Export and plot menus` | `openMenu`, the Export menu, the right-click plot menu |
 | `Plot management` | Adding and removing plots |
 | `Sidebar` / `Tabs` / `Theme` / `Keyboard shortcuts` / `Autosave` | Sample list, gate tree, active plot (`ui`, `activePanel`), tab switching, theme button, tool keys, `scheduleAutosave` / `offerRestore` |
-| `Start` | Example gates and start-up |
+| `Example sets` / `Start` | `setupAccuriExample`, `setupTCellExample` (gates and plots), `loadExampleSet`, start-up |
 
 A few conventions:
 - **Per-plot view settings** (`PANEL_VIEW`: population, channels, scales, zoom ranges, style, backgate, overlays) go through `panelView()` for undo and workspaces. Add new view settings there and in `cleanWorkspace`.

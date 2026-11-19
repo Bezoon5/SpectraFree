@@ -184,6 +184,9 @@ td{padding:5px 10px;border-bottom:1px solid var(--line);text-align:right;font-fa
 .sitem[aria-current="true"]{background:var(--accent-soft);color:var(--accent);font-weight:600}
 .sitem .sname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .sitem .sn{flex:0 0 auto;font-family:var(--f-mono);font-size:11px;color:var(--muted);font-weight:400}
+.exrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.exrow label{font-size:12px;color:var(--muted);font-weight:600}
+.exrow select{flex:1 1 140px;min-width:0}
 .volrow{display:flex;align-items:center;flex-wrap:wrap;gap:6px 8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
 .volrow label{font-size:12px;color:var(--muted);font-weight:600}
 .volin{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--muted)}
@@ -242,6 +245,8 @@ kbd{font-family:var(--f-mono);font-size:11px;background:var(--surface-2);border:
 .status[data-state="off"]{background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
 .status[data-state="bad"]{background:transparent;color:var(--danger);border:1px solid var(--danger)}
 .compgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:16px 28px}
+.compgrid.many{grid-template-columns:minmax(0,1fr)}
+.compgrid.many table.spill .spin{width:58px}
 .compcol{display:flex;flex-direction:column;gap:10px;min-width:0}
 h3{margin:0;font-size:13px;font-weight:600}
 .sub{margin:0;color:var(--muted);font-size:12.5px;max-width:62ch}
@@ -369,6 +374,14 @@ table.labels input{width:min(260px,100%)}
     <section class="sidecard">
       <div class="sidehead"><h2>Samples</h2><span id="sampleCount" class="sidecount"></span></div>
       <ul id="sampleList" class="samplelist"></ul>
+      <div class="exrow">
+        <label for="exampleSel">Example data</label>
+        <select id="exampleSel">
+          <option value="" disabled>Your files</option>
+          <option value="accuri">4-colour (Accuri C6 style)</option>
+          <option value="tcell">11-colour T-cell activation</option>
+        </select>
+      </div>
       <div class="volrow">
         <label for="volInput">Volume analysed</label>
         <span class="volin"><input id="volInput" type="text" inputmode="decimal" autocomplete="off" aria-describedby="volHelp"><span>µL</span></span>
@@ -2038,6 +2051,8 @@ function renderComp(){
   const cands = candidates(s); C.chs.forEach(n => { if (n in s.idx && !cands.includes(n)) cands.push(n); });
   $('#compChs').innerHTML = cands.map((n, i) => `<label class="chk" for="cc-${i}"><input type="checkbox" id="cc-${i}" value="${esc(n)}" ${C.chs.includes(n) ? 'checked' : ''}>${esc(chOf(s, n).label)}</label>`).join('');
   const names = C.chs.filter(n => n in s.idx), t = $('#spillTable');
+  // big panels: the matrix gets the full width, with the control tubes underneath
+  document.querySelector('.compgrid').classList.toggle('many', names.length > 6);
   if (names.length < 2) t.innerHTML = `<tbody><tr><td class="empty">Choose at least two channels to compensate.</td></tr></tbody>`;
   else t.innerHTML = `<thead><tr><th>Spill from ↓ into →</th>${names.map(n => `<th>${esc(n)}</th>`).join('')}</tr></thead><tbody>` +
     names.map((a, i) => `<tr><th scope="row">${esc(chOf(s, a).label)}</th>${names.map((b, j) => i === j ? `<td class="diag">100</td>`
@@ -2130,7 +2145,7 @@ function detectControls(){
   const U = byName || ss.reduce((best, x) => { const t = names.reduce((a, n) => a + Math.log10(p95(x, n)), 0); return !best || t < best.t ? {x, t} : best; }, null).x;
   C.unst = U; C.ctrl = {};
   report.push({ch: 'Unstained', x: U, why: byName ? 'matched by file name' : 'dimmest tube in every channel'});
-  const nameHit = x => names.find(n => { const c = chOf(s0, n), base = n.replace(/-[AHW]$/i, '');
+  const nameHit = x => [...names].sort((a, b) => b.length - a.length).find(n => { const c = chOf(s0, n), base = n.replace(/-[AHW]$/i, '');
     return new RegExp(`(^|[^a-z0-9])${escRe(base)}([^a-z0-9]|$)`, 'i').test(x.name) || (c.stain && new RegExp(`(^|[^a-z0-9])${escRe(c.stain)}([^a-z0-9]|$)`, 'i').test(x.name)); });
   const best = {};
   for (const x of ss){
@@ -2275,6 +2290,7 @@ async function loadFiles(files){
       state.sel = null;
       if (!state.gates.length) state.nextId = 1;
       state.comp = {on: false, chs: [], S: {}, ctrl: {}, unst: null, pop: 'auto'};
+      state.exampleSet = null;
     }
     const first = state.samples.length; state.samples.push(...added); setCurrent(first);
     detectControls(); renderComp();
@@ -2386,6 +2402,100 @@ function makeCellCycleTube(kind, n, seed0, label){
   }
   const buf = writeFCS(names, stains, cols, [['$CYT', 'Synthetic example'], ['$DATE', '19-NOV-2026'], ['$FIL', label + '.fcs'], ['$SRC', 'Generated in the browser (PI cell cycle)'], ['$VOL', '25000']]);
   const s = parseFCS(buf, label); s.example = true; return s;
+}
+/* ---------------- Example data: 11-colour T-cell activation panel (synthetic) ---------------- */
+// [channel, marker, autofluorescence, electronic noise]: a 5-laser analyser with fluorochrome-named detectors
+const TC_CH = [
+  ['BUV395-A', 'HLA-DR', 300, 90], ['BUV496-A', 'CD3', 380, 110], ['BUV615-A', 'CD25', 120, 70],
+  ['BV421-A', 'CD137 (4-1BB)', 180, 70], ['BV480-A', 'CD69', 220, 80], ['BV750-A', 'CD8', 90, 60],
+  ['FITC-A', 'CD4', 160, 60], ['7-AAD-A', 'Viability', 80, 50], ['PE-A', 'CD38', 70, 45],
+  ['PE-Cy7-A', 'CD134 (OX40)', 60, 45], ['APC-A', 'CD154 (CD40L)', 50, 40]];
+// spillover built into the data: row = dye, column = detector
+const TC_SPILL = (() => {
+  const n = TC_CH.length, S = Array.from({length: n}, (_, i) => Array.from({length: n}, (_, j) => i === j ? 1 : 0));
+  const I = Object.fromEntries(TC_CH.map((c, i) => [c[0].replace(/-A$/, ''), i])), set = (a, b, v) => { S[I[a]][I[b]] = v; };
+  set('BUV395', 'BUV496', .03); set('BUV496', 'BUV395', .01); set('BUV496', 'BV480', .08); set('BUV496', 'FITC', .05);
+  set('BUV615', 'PE', .04); set('BUV615', '7-AAD', .03); set('BUV615', 'APC', .02);
+  set('BV421', 'BV480', .18); set('BV421', 'BUV496', .04);
+  set('BV480', 'BUV496', .12); set('BV480', 'BV421', .03); set('BV480', 'FITC', .02);
+  set('BV750', 'PE-Cy7', .08); set('BV750', '7-AAD', .01); set('BV750', 'APC', .01);
+  set('FITC', 'PE', .15); set('FITC', '7-AAD', .02); set('FITC', 'BV480', .01);
+  set('7-AAD', 'PE', .10); set('7-AAD', 'PE-Cy7', .06); set('7-AAD', 'APC', .02);
+  set('PE', '7-AAD', .18); set('PE', 'PE-Cy7', .02); set('PE', 'FITC', .01);
+  set('PE-Cy7', 'BV750', .03); set('PE-Cy7', '7-AAD', .04); set('PE-Cy7', 'APC', .01);
+  set('APC', 'PE-Cy7', .02); set('APC', 'BV750', .01);
+  return S;
+})();
+// kind: 'stim' | 'unstim' | 'unstained' | index of the single-stained dye
+function makeTCellTube(kind, n, seed0, label){
+  let seed = seed0;
+  const r = () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  const g = () => { let u = 0, v = 0; while (!u) u = r(); while (!v) v = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+  const L = (m, sd) => 10 ** (m + sd * g()), on = (p, m, sd = .18) => r() < p ? L(m, sd) : 0;
+  const K = TC_CH.length, MAXV = 262143;
+  const [cHLA, cCD3, cCD25, cCD137, cCD69, cCD8, cCD4, cVia, cCD38, cOX40, cCD154] = [...Array(K).keys()];
+  const names = ['FSC-A', 'FSC-H', 'SSC-A', 'SSC-H', ...TC_CH.map(c => c[0]), 'Time'];
+  const cols = names.map(() => new Float32Array(n)), sig = new Float64Array(K);
+  const stim = kind === 'stim', full = stim || kind === 'unstim', single = typeof kind === 'number' ? kind : -1;
+  for (let e = 0; e < n; e++){
+    sig.fill(0);
+    let fsc, ssc, dbl = false;
+    const k = r(), deadF = stim ? 0.14 : 0.07;
+    if (k < 0.08){ fsc = 10 ** (4.1 + 0.25 * g()); ssc = 10 ** (3.9 + 0.3 * g()); }               // debris
+    else if (full && k < 0.08 + deadF){ fsc = 45000 * (1 + 0.2 * g()); ssc = 32000 * (1 + 0.3 * g()); sig[cVia] = L(4.25, .15); } // dead cells
+    else if (!full){
+      // controls: lymphocytes, half of them carrying the one dye (heat-killed cells for the viability control)
+      fsc = 80000 * (1 + .07 * g()); ssc = 23000 * (1 + .15 * g());
+      if (single >= 0 && r() < 0.5) sig[single] = L(4.35, .15);
+    } else {
+      dbl = r() < 0.04;
+      if (r() < 0.7){
+        const t = r(), sub = t < 0.63 ? 'cd4' : t < 0.93 ? 'cd8' : t < 0.98 ? 'dn' : 'dp';
+        const four = sub === 'cd4' || sub === 'dp', eight = sub === 'cd8' || sub === 'dp';
+        const resp = r() < (stim ? (sub === 'cd8' ? 0.75 : sub === 'cd4' ? 0.8 : 0.4) : 0.02);
+        sig[cCD3] = L(resp ? 4.05 : 4.3, .12);             // CD3 is internalised after stimulation
+        if (four) sig[cCD4] = L(resp ? 3.95 : 4.1, .1);
+        if (eight) sig[cCD8] = L(4.4, .12);
+        if (resp){
+          sig[cCD69] = on(.95, 4.0); sig[cCD25] = on(.85, 3.9); sig[cCD38] = on(.75, 3.9); sig[cHLA] = on(.25, 3.7);
+          sig[cOX40] = on(four ? .55 : .12, 3.6); sig[cCD137] = on(eight ? .5 : .15, 3.8); sig[cCD154] = on(four ? .45 : .05, 3.7);
+        } else {
+          sig[cCD69] = on(.03, 3.4); sig[cCD25] = four && r() < .05 ? L(3.8, .12) : on(four ? .22 : .03, 3.2, .2);
+          sig[cCD38] = on(.35, 3.3, .2); sig[cHLA] = on(.04, 3.5);
+        }
+        fsc = (resp ? 105000 : 78000) * (1 + .07 * g()); ssc = (resp ? 30000 : 22000) * (1 + .15 * g());
+      } else {
+        const B = r() < .45;                              // B cells (HLA-DR+) and NK cells
+        if (B) sig[cHLA] = L(4.3, .15);
+        if (stim) sig[cCD69] = on(.4, 3.6, .2);
+        sig[cCD38] = on(.5, 3.5, .2);
+        fsc = 80000 * (1 + .07 * g()); ssc = (B ? 20000 : 28000) * (1 + .15 * g());
+      }
+      if (dbl){ for (let i = 0; i < K; i++) sig[i] *= 1.9; }
+    }
+    const fA = dbl ? fsc * 1.9 : fsc, fH = (dbl ? fsc * 1.05 : fsc) * 0.85 * (1 + .02 * g());
+    const row = cols;
+    row[0][e] = clamp(fA, 0, MAXV); row[1][e] = clamp(fH, 0, MAXV); row[2][e] = clamp(dbl ? ssc * 1.8 : ssc, 0, MAXV); row[3][e] = clamp((dbl ? ssc * 1.8 : ssc) * 0.82 * (1 + .03 * g()), 0, MAXV);
+    for (let j = 0; j < K; j++){
+      let v = 0; for (let i = 0; i < K; i++) if (sig[i]) v += sig[i] * TC_SPILL[i][j];
+      // autofluorescence, electronic noise and photon-counting noise (which grows with the signal: spreading error)
+      const af = TC_CH[j][2] * 10 ** (.12 * g()), sd = Math.sqrt(TC_CH[j][3] ** 2 + 1.5 * Math.max(0, v));
+      cols[4 + j][e] = clamp(af + v + sd * g(), -2000, MAXV);
+    }
+    cols[4 + K][e] = e * 0.05;
+  }
+  const chs = names.map((nm, i) => ({name: nm, label: i >= 4 && i < 4 + K ? TC_CH[i - 4][1] : '', range: nm === 'Time' ? Math.ceil(n * 0.05) + 1 : 262144}));
+  const spill = `${K},${TC_CH.map(c => c[0]).join(',')},${TC_SPILL.flat().map(v => +v.toFixed(4)).join(',')}`;
+  const bytes = buildFCS(chs, cols, [['$CYT', 'Synthetic 5-laser analyser'], ['$DATE', '19-NOV-2026'], ['$FIL', label + '.fcs'], ['$SRC', 'Generated in the browser (11-colour T-cell activation panel)'],
+    ...(full ? [['$SPILLOVER', spill]] : [])]);
+  const smp = parseFCS(bytes.buffer, label); smp.example = true; return smp;
+}
+function makeTCellExamples(){
+  const out = [makeTCellTube('stim', 50000, 31, 'T-cell activation: stimulated (synthetic)'),
+    makeTCellTube('unstim', 50000, 32, 'T-cell activation: unstimulated (synthetic)'),
+    makeTCellTube('unstained', 15000, 33, 'T-cell panel: unstained control')];
+  TC_CH.forEach((c, i) => out.push(makeTCellTube(i, 10000, 40 + i, `T-cell panel: single stain ${c[0].replace(/-A$/, '')} (${c[1]})`)));
+  return out;
 }
 function makeExamples(){
   return [
@@ -2938,7 +3048,7 @@ $('#wsFile').addEventListener('change', e => { const f = e.target.files[0]; e.ta
 
 
 /* ---------------- Batch reports: PDF and PowerPoint ---------------- */
-const APP_VERSION = '1.3.0';
+const APP_VERSION = '1.4.0';
 // One report page for the current sample: plots on the left, statistics on the right.
 // header=false leaves the title out (the PowerPoint slide has it as editable text instead).
 function composeReportPage(W, H, opts = {}){
@@ -3262,6 +3372,7 @@ function syncActive(){ const a = activePanel(); if (a) ui.active = a.key; panels
 function renderSamples(){
   const L = $('#sampleList'); if (!L) return;
   $('#sampleCount').textContent = state.samples.length ? String(state.samples.length) : '';
+  syncExampleSel();
   L.innerHTML = state.samples.map((x, k) => `<li><button type="button" class="sitem" data-k="${k}" aria-current="${k === state.cur}" title="${esc(x.name)}"><span class="sname">${esc(x.name.replace(/^Example: /, ''))}</span><span class="sn">${fmtSI(x.n)}</span></button></li>`).join('');
   renderVolume();
 }
@@ -3399,11 +3510,9 @@ $('#restoreBtn').addEventListener('click', () => {
 });
 $('#restoreNo').addEventListener('click', () => { $('#restoreBar').hidden = true; });
 
-/* ---------------- Start ---------------- */
-panels = [];
-addPanel({pop: 'all'}); addPanel({pop: 'all'});
-(function init(){
-  state.samples = makeExamples();
+/* ---------------- Example sets ---------------- */
+function setupAccuriExample(){
+  state.samples = makeExamples(); state.cur = 0;
   const P = (x, y) => [10 ** x, 10 ** y];
   state.gates = [
     {id: 1, name: 'Lymphocytes', parent: null, type: 'poly', xch: 'FSC-A', ych: 'SSC-A', xs: 'log', ys: 'log', example: true,
@@ -3414,14 +3523,92 @@ addPanel({pop: 'all'}); addPanel({pop: 'all'});
       pts: [P(2.4, 4.25), P(4.05, 4.25), P(4.05, 5.7), P(2.4, 5.7)]},
   ];
   state.nextId = 4;
-  panels[1].pop = 1;
+  addPanel({pop: 'all'}); addPanel({pop: 1});
   state.comp.chs = candidates(state.samples[0]);
   state.comp.pop = 1;
-  state.cur = 0;
-  detectControls();
-  setCurrent(0);
-  resetHistory();
-  syncActive();
+}
+function setupTCellExample(){
+  state.samples = makeTCellExamples(); state.cur = 0;
+  const rect = (id, name, parent, xch, ych, x0, x1, y0, y1) => ({id, name, parent, type: 'poly', shape: 'rect', xch, ych, xs: 'asinh', ys: 'asinh', example: true, pts: [[x0, y0], [x1, y0], [x1, y1], [x0, y1]]});
+  const quad = (id0, parent, xch, ych, X, Y, cx, cy) => {
+    const signs = {1: ['−', '+'], 2: ['+', '+'], 3: ['+', '−'], 4: ['−', '−']};
+    return [1, 2, 3, 4].map(q => ({id: id0 + q - 1, name: `Q${q} ${X}${signs[q][0]} ${Y}${signs[q][1]}`, parent, type: 'poly', shape: 'quad', quad: {group: id0, q}, qc: [cx, cy],
+      xch, ych, xs: 'asinh', ys: 'asinh', example: true, pts: quadPts(q, cx, cy)}));
+  };
+  state.gates = [
+    {id: 1, name: 'Lymphocytes', parent: null, type: 'poly', xch: 'FSC-A', ych: 'SSC-A', xs: 'lin', ys: 'lin', example: true,
+      pts: [[50000, 6000], [150000, 6000], [175000, 55000], [95000, 70000], [45000, 40000]]},
+    {id: 2, name: 'Singlets', parent: 1, type: 'poly', xch: 'FSC-A', ych: 'FSC-H', xs: 'lin', ys: 'lin', example: true,
+      pts: [[20000, 14000], [262000, 183400], [262000, 262000], [20000, 20000]]},
+    rect(3, 'Live CD3+', 2, '7-AAD-A', 'BUV496-A', -2000, 1500, 2500, 200000),
+    rect(4, 'CD4+', 3, 'FITC-A', 'BV750-A', 2500, 150000, -1500, 2000),
+    rect(5, 'CD8+', 3, 'FITC-A', 'BV750-A', -1500, 2000, 4000, 200000),
+    ...quad(6, 4, 'BV480-A', 'BUV615-A', 'CD69', 'CD25', 1000, 800),
+    ...quad(10, 4, 'PE-Cy7-A', 'APC-A', 'OX40', 'CD40L', 700, 700),
+    ...quad(14, 5, 'BV421-A', 'BV480-A', '4-1BB', 'CD69', 1000, 1000),
+    ...quad(18, 5, 'PE-A', 'BUV395-A', 'CD38', 'HLA-DR', 800, 1200),
+  ];
+  state.nextId = 22;
+  // singlets: a wedge around the main FSC area/height ratio, kept inside both tubes' axes (corners past an axis end would be clipped)
+  const s0 = state.samples[0], full = state.samples.slice(0, 2);
+  full.forEach(x => { applyComp(x); computeMasks(x); });
+  const w = singletWedge(s0, 'FSC-A', 'FSC-H', 1);
+  if (w){
+    const far = Math.min(...full.map(x => Math.min(makeScale('lin', chOf(x, 'FSC-A')).hi, makeScale('lin', chOf(x, 'FSC-H')).hi / w.rmin))) * 0.98;
+    gateById(2).pts = [[0, 0], [far, far / w.rmax], [far, far / w.rmin]];
+  }
+  const plots = [['all', 'FSC-A', 'lin', 'SSC-A', 'lin'], [1, 'FSC-A', 'lin', 'FSC-H', 'lin'], [2, '7-AAD-A', 'asinh', 'BUV496-A', 'asinh'], [3, 'FITC-A', 'asinh', 'BV750-A', 'asinh'],
+    [4, 'BV480-A', 'asinh', 'BUV615-A', 'asinh'], [4, 'PE-Cy7-A', 'asinh', 'APC-A', 'asinh'], [5, 'BV421-A', 'asinh', 'BV480-A', 'asinh'], [5, 'PE-A', 'asinh', 'BUV395-A', 'asinh']];
+  for (const [pop, xn, xs, yn, ys] of plots){ const p = addPanel({pop}); if (p){ Object.assign(p, {xn, xs, yn, ys}); p.syncControls(); } }
+  // compensation starts on, with the matrix stored in the files (as an instrument would record it)
+  const C = state.comp;
+  C.chs = candidates(s0); C.pop = 'auto';
+  if (s0.spill){ const {names, M} = s0.spill; names.forEach((a, i) => names.forEach((b, j) => { if (i !== j && M[i][j]) C.S[a + '|' + b] = M[i][j]; })); C.on = true; }
+}
+const EXAMPLE_SETS = {accuri: setupAccuriExample, tcell: setupTCellExample};
+function loadExampleSet(kind){
+  if (!EXAMPLE_SETS[kind]) kind = 'accuri';
+  hist.busy++;
+  try {
+    panels.forEach(p => { p.draft = null; p.drag = null; });
+    for (const p of [...panels]) removePanel(p, true);
+    state.labels = {}; state.volumes = {}; state.cc = null; state.sel = null; state.gates = []; state.nextId = 1;
+    state.comp = {on: false, chs: [], S: {}, ctrl: {}, unst: null, pop: 'auto'};
+    EXAMPLE_SETS[kind]();
+    state.exampleSet = kind;
+    detectControls();
+    $('#autoReport').hidden = true;
+    setCurrent(0);
+  } finally { hist.busy--; }
+  resetHistory(); syncActive(); renderSamples();
+}
+function syncExampleSel(){
+  const sel = $('#exampleSel'); if (!sel) return;
+  const ex = state.samples.length && state.samples.every(x => x.example);
+  sel.value = ex ? (state.exampleSet || 'accuri') : '';
+}
+$('#exampleSel').addEventListener('change', e => {
+  const kind = e.target.value; syncExampleSel();
+  if (!EXAMPLE_SETS[kind] || (kind === state.exampleSet && state.samples.every(x => x.example))) return;
+  const go = () => {
+    toast('Generating the example data…');
+    setTimeout(() => {
+      loadExampleSet(kind);
+      showMsg(kind === 'tcell'
+        ? 'Loaded the 11-colour T-cell activation example: stimulated and unstimulated tubes, an unstained control and 11 single stains. Compensation is on, using the matrix stored in the files. Try turning it off, or press Auto-compensate in the Compensation tab and compare.'
+        : 'Loaded the 4-colour example data.', true);
+    }, 30);
+  };
+  if (state.samples.some(x => !x.example))
+    openModal('Close your files and load example data?', 'Your open FCS files, gates and plots will be closed, and this cannot be undone. Save a workspace first (Export → Save workspace) if you want to keep them.', '',
+      [['Load example data', () => { closeModal(); go(); }, true]]);
+  else go();
+});
+
+/* ---------------- Start ---------------- */
+panels = [];
+(function init(){
+  loadExampleSet('accuri');
   setTab(store.get('sf-tab') || 'pop');
   const th = store.get('sf-theme'); applyTheme(th === 'light' || th === 'dark' ? th : null);
   offerRestore();

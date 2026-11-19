@@ -2,6 +2,18 @@
 
 All notable changes to SpectraFree are recorded here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/).
 
+## [1.4.0] - 2026-11-19
+
+### Added
+- 11-colour T-cell activation example: stimulated and unstimulated tubes, unstained and 11 single stains (BUV395, BUV496, BUV615, BV421, BV480, BV750, FITC, 7-AAD, PE, PE-Cy7, APC), a built-in 11 × 11 spillover matrix stored as `$SPILLOVER`, photon-counting noise (spreading error), and an 8-plot gating strategy. Choose it from **Example data** in the sidebar.
+- Example data picker in the sidebar to switch between the 4-colour and 11-colour sets (asks first if your own files are open).
+
+### Changed
+- With more than six compensated channels, the spillover matrix gets the full width of the Compensation tab.
+
+### Fixed
+- Control-tube detection by file name tries longer channel names first, so a PE-Cy7 single stain is no longer taken for PE (and APC-Cy7 for APC).
+
 ## [1.3.0] - 2026-11-19
 
 ### Added
