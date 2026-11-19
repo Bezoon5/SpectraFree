@@ -378,7 +378,8 @@ table.labels input{width:min(260px,100%)}
         <label for="exampleSel">Example data</label>
         <select id="exampleSel">
           <option value="" disabled>Your files</option>
-          <option value="accuri">4-colour (Accuri C6 style)</option>
+          <option value="accuri">4-colour: FITC, PE, PerCP, APC</option>
+          <option value="cellcycle">Cell cycle: PI</option>
           <option value="tcell">11-colour T-cell activation</option>
         </select>
       </div>
@@ -496,7 +497,7 @@ table.labels input{width:min(260px,100%)}
       <div class="field"><label for="ccH">Doublet check against</label><select id="ccH"></select></div>
       <div class="field"><label for="ccParent">Start from</label><select id="ccParent"></select></div>
     </div>
-    <p class="sub ccintro">Auto-gating first keeps single cells: clumps of two cells have twice the DNA area but not twice the height. It then fits the DNA histogram with a G0/G1 peak, a G2/M peak at about twice the DNA, and S phase between them. It adds gates and two plots so you can check the result. To try it, pick <strong>Example: cell cycle, untreated</strong> or <strong>G2/M arrest</strong> in the sample list.</p>
+    <p class="sub ccintro">Auto-gating first keeps single cells: clumps of two cells have twice the DNA area but not twice the height. It then fits the DNA histogram with a G0/G1 peak, a G2/M peak at about twice the DNA, and S phase between them. It adds gates and two plots so you can check the result. To try it, choose <strong>Cell cycle: PI</strong> under <strong>Example data</strong> in the sidebar.</p>
     <div id="ccOut"></div>
   </section>
       </div>
@@ -2505,6 +2506,10 @@ function makeExamples(){
     makeTube('PE', 12000, 13, 'Example: PE single stain'),
     makeTube('PerCP', 12000, 14, 'Example: PerCP single stain'),
     makeTube('APC', 12000, 15, 'Example: APC single stain'),
+  ];
+}
+function makeCellCycleExamples(){
+  return [
     makeCellCycleTube('untreated', 30000, 21, 'Example: cell cycle, untreated (PI, synthetic)'),
     makeCellCycleTube('arrest', 30000, 22, 'Example: cell cycle, G2/M arrest (PI, synthetic)'),
   ];
@@ -3048,7 +3053,7 @@ $('#wsFile').addEventListener('change', e => { const f = e.target.files[0]; e.ta
 
 
 /* ---------------- Batch reports: PDF and PowerPoint ---------------- */
-const APP_VERSION = '1.4.0';
+const APP_VERSION = '1.4.1';
 // One report page for the current sample: plots on the left, statistics on the right.
 // header=false leaves the title out (the PowerPoint slide has it as editable text instead).
 function composeReportPage(W, H, opts = {}){
@@ -3565,7 +3570,19 @@ function setupTCellExample(){
   C.chs = candidates(s0); C.pop = 'auto';
   if (s0.spill){ const {names, M} = s0.spill; names.forEach((a, i) => names.forEach((b, j) => { if (i !== j && M[i][j]) C.S[a + '|' + b] = M[i][j]; })); C.on = true; }
 }
-const EXAMPLE_SETS = {accuri: setupAccuriExample, tcell: setupTCellExample};
+// Cell cycle: no gates yet, so the trainee runs the auto-gating; plots B and C are the ones auto-gating reuses
+function setupCellCycleExample(){
+  state.samples = makeCellCycleExamples(); state.cur = 0; state.nextId = 1;
+  const A = addPanel({pop: 'all'}); if (A){ Object.assign(A, {xn: 'FSC-A', xs: 'log', yn: 'SSC-A', ys: 'log'}); A.syncControls(); }
+  const B = addPanel({pop: 'all'}); if (B){ Object.assign(B, {xn: 'FL2-A', xs: 'lin', yn: 'FL2-H', ys: 'lin', role: 'cc-pulse'}); B.syncControls(); }
+  const C = addPanel({pop: 'all'}); if (C){ Object.assign(C, {xn: 'FL2-A', xs: 'lin', y2: 'FL2-H', yn: HIST, role: 'cc-hist'}); C.syncControls(); }
+  state.comp.chs = candidates(state.samples[0]);
+}
+const EXAMPLE_SETS = {accuri: setupAccuriExample, cellcycle: setupCellCycleExample, tcell: setupTCellExample};
+const EXAMPLE_MSG = {
+  accuri: 'Loaded the 4-colour example: a stained sample (FITC, PE, PerCP, APC), an unstained control and four single stains. Try Auto-compensate in the Compensation tab.',
+  cellcycle: 'Loaded the cell-cycle example: untreated and G2/M-arrested cells stained with PI. Open the Cell cycle tab and press Run auto-gating.',
+  tcell: 'Loaded the 11-colour T-cell activation example: stimulated and unstimulated tubes, an unstained control and 11 single stains. Compensation is on, using the matrix stored in the files. Try turning it off, or press Auto-compensate in the Compensation tab and compare.'};
 function loadExampleSet(kind){
   if (!EXAMPLE_SETS[kind]) kind = 'accuri';
   hist.busy++;
@@ -3576,7 +3593,7 @@ function loadExampleSet(kind){
     state.comp = {on: false, chs: [], S: {}, ctrl: {}, unst: null, pop: 'auto'};
     EXAMPLE_SETS[kind]();
     state.exampleSet = kind;
-    detectControls();
+    if (kind !== 'cellcycle') detectControls(); // the PI tubes have no compensation controls
     $('#autoReport').hidden = true;
     setCurrent(0);
   } finally { hist.busy--; }
@@ -3594,9 +3611,9 @@ $('#exampleSel').addEventListener('change', e => {
     toast('Generating the example data…');
     setTimeout(() => {
       loadExampleSet(kind);
-      showMsg(kind === 'tcell'
-        ? 'Loaded the 11-colour T-cell activation example: stimulated and unstimulated tubes, an unstained control and 11 single stains. Compensation is on, using the matrix stored in the files. Try turning it off, or press Auto-compensate in the Compensation tab and compare.'
-        : 'Loaded the 4-colour example data.', true);
+      clearTimeout(toastTimer); $('#toast').hidden = true;
+      if (kind === 'cellcycle') setTab('cc');
+      showMsg(EXAMPLE_MSG[kind], true);
     }, 30);
   };
   if (state.samples.some(x => !x.example))

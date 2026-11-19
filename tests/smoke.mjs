@@ -30,7 +30,7 @@ try {
   // ---------- start-up
   let page = await freshPage();
   check('page title is SpectraFree', (await page.title()) === 'SpectraFree');
-  check('eight example tubes load', (await page.evaluate(() => state.samples.length)) === 8);
+  check('the 4-colour example set loads 6 tubes (stained, unstained, 4 single stains)', (await page.evaluate(() => state.samples.length)) === 6);
 
   // ---------- FCS reader
   const parse = await page.evaluate(() => {
@@ -92,6 +92,8 @@ try {
 
   // ---------- cell cycle
   page = await freshPage();
+  await page.evaluate(() => loadExampleSet('cellcycle'));
+  check('cell-cycle example set has the two PI tubes and no compensation controls', await page.evaluate(() => state.samples.length === 2 && !state.comp.unst && state.samples.every(s => /cell cycle/.test(s.name))));
   const cc = {};
   for (const [kind, label] of [['untreated', /untreated/], ['arrest', /arrest/]]){
     await page.evaluate(src => setCurrent(state.samples.findIndex(s => new RegExp(src).test(s.name))), label.source);
@@ -114,6 +116,8 @@ try {
   }
 
   // ---------- plots and undo / redo
+  await page.close();
+  page = await freshPage();
   const before = await page.evaluate(() => ({ plots: panels.length, gates: state.gates.length }));
   await page.click('#addPlot');
   check('Add plot adds a plot', (await page.evaluate(() => panels.length)) === before.plots + 1);
@@ -238,10 +242,10 @@ try {
     for (let i = 0; i < s.n; i++){ n1 += m1[i]; n2 += m2[i]; both += m1[i] && m2[i]; }
     o.autoCells = both / Math.max(n1, n2);
     // singlets on the cell-cycle tube
-    setCurrent(state.samples.findIndex(x => /untreated/.test(x.name)));
-    autoGateSinglets(panels[1]); const sg = state.gates[state.gates.length - 1];
+    loadExampleSet('cellcycle');
+    autoGateSinglets(panels[0]); const sg = state.gates[state.gates.length - 1];
     o.singlets = sg.name === 'Singlets' ? popCount(cur(), sg.id) / cur().n : 0;
-    setCurrent(0);
+    loadExampleSet('accuri');
     // absolute counts: example tubes carry $VOL = 25 µL; a typed volume overrides it
     o.volFile = sampleVol(cur()); setVolume(cur(), '50'); o.volTyped = sampleVol(cur());
     o.concColumn = [...document.querySelectorAll('#popTable th')].some(t => t.textContent === 'Events/µL');
@@ -301,7 +305,7 @@ try {
     const names = TC_CH.map(c => c[0]); let worst = 0;
     names.forEach((a, i) => names.forEach((b, j) => { if (i !== j) worst = Math.max(worst, Math.abs((state.comp.S[a + '|' + b] || 0) - TC_SPILL[i][j])); }));
     o.worst = worst;
-    loadExampleSet('accuri'); o.back = state.samples.length === 8 && state.gates.length === 3;
+    loadExampleSet('accuri'); o.back = state.samples.length === 6 && state.gates.length === 3;
     return o;
   });
   check('T-cell example loads 14 tubes and 8 plots', tc.tubes === 14 && tc.plots === 8);

@@ -111,16 +111,23 @@ Online or offline with your own data. Export FCS files from your cytometer softw
 
 ## Example data
 
-Eight synthetic tubes load on first open, labelled **Example**. They are generated in the browser with known answers, so they double as teaching material:
+Three synthetic experiments are built in, generated in the browser with known answers, so they double as teaching material. Switch between them with **Example data** in the sidebar. The 4-colour experiment loads on first open.
+
+**4-colour: FITC, PE, PerCP, APC** (6 tubes)
 
 | Tube | What it teaches |
 |---|---|
 | Stained sample | Scatter gating, nested gates, FITC and PE populations, the effect of spillover |
 | Unstained + four single stains (FITC, PE, PerCP, APC) | Building a compensation matrix by hand or with Auto-compensate |
-| Cell cycle, untreated (PI) | Doublet discrimination and a normal cell-cycle profile |
-| Cell cycle, G2/M arrest (PI) | A drug-arrested profile for comparison |
 
-A second set, **11-colour T-cell activation**, is one click away in the sidebar (**Example data**). It follows a typical 5-laser activation panel:
+**Cell cycle: PI** (2 tubes, opens on the Cell cycle tab, ready for Run auto-gating)
+
+| Tube | What it teaches |
+|---|---|
+| Untreated | Doublet discrimination and a normal cell-cycle profile |
+| G2/M arrest | A drug-arrested profile for comparison |
+
+**11-colour T-cell activation** (14 tubes) follows a typical 5-laser activation panel:
 
 | Laser | Marker | Dye |
 |---|---|---|

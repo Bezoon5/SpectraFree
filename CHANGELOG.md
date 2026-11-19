@@ -2,6 +2,11 @@
 
 All notable changes to SpectraFree are recorded here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/).
 
+## [1.4.1] - 2026-11-19
+
+### Changed
+- The original example data is now two experiments: **4-colour: FITC, PE, PerCP, APC** (stained, unstained and four single stains; loads on first open) and **Cell cycle: PI** (untreated and G2/M arrest). The cell-cycle set opens on the Cell cycle tab with ungated DNA area/height and histogram plots, which auto-gating then reuses.
+
 ## [1.4.0] - 2026-11-19
 
 ### Added

@@ -82,9 +82,9 @@ Type a new number into the FL1-A → FL2-A cell, for example 20. The FL1+ popula
 
 ## 4. Cell-cycle analysis
 
-1. Choose **Example: cell cycle, untreated (PI, synthetic)**.
-2. In the **Cell cycle** tab, the DNA channel is set to FL2-A · PI and the doublet check to FL2-H. Press **Run auto-gating**.
-3. Two plots appear:
+1. In the sidebar, set **Example data** to **Cell cycle: PI**. Two tubes load (untreated and G2/M arrest) and the **Cell cycle** tab opens. Plot B shows DNA area against height and plot C the DNA histogram, both ungated so you can see the raw data first.
+2. The DNA channel is set to FL2-A · PI and the doublet check to FL2-H. Press **Run auto-gating**.
+3. Plots B and C are gated:
    - **DNA area against height**: single cells form a straight diagonal band. Clumps of two cells sit below it, because they have twice the DNA area but not twice the height. The **Singlets** gate keeps the band.
    - **DNA histogram** of single cells, with the fitted G0/G1 (green), S (amber) and G2/M (blue) components and the model total (dashed).
 4. Read the results: about 56% G0/G1, 21% S and 14% G2/M. Check the quality panel: a G2/G1 ratio of 1.96 and a G0/G1 CV of 3.6% are good.
@@ -152,7 +152,7 @@ Both make ordinary gates: adjust them with the handles, or undo.
 
 ## 8. A multicolour experiment: T-cell activation
 
-In the sidebar, set **Example data** to **11-colour T-cell activation**. Fourteen tubes load: stimulated and unstimulated samples, an unstained control, and one single stain for each of the 11 dyes (HLA-DR BUV395, CD3 BUV496, CD25 BUV615, CD137 BV421, CD69 BV480, CD8 BV750, CD4 FITC, viability 7-AAD, CD38 PE, CD134 PE-Cy7, CD154 APC).
+In the sidebar, set **Example data** to **11-colour T-cell activation**. (To get back to the exercises in sections 2 and 3, choose **4-colour: FITC, PE, PerCP, APC**.) Fourteen tubes load: stimulated and unstimulated samples, an unstained control, and one single stain for each of the 11 dyes (HLA-DR BUV395, CD3 BUV496, CD25 BUV615, CD137 BV421, CD69 BV480, CD8 BV750, CD4 FITC, viability 7-AAD, CD38 PE, CD134 PE-Cy7, CD154 APC).
 
 ### 8.1 Follow the gating strategy
 The eight plots are a complete strategy, top to bottom: **Lymphocytes** (FSC/SSC) → **Singlets** (FSC-A/FSC-H) → **Live CD3+** (7-AAD against CD3) → **CD4+** and **CD8+** → four quadrant plots of activation markers. Open the gate tree in the sidebar to see the same hierarchy with counts.

@@ -60,7 +60,7 @@ Everything is in `index.html`, in this order:
 | `Export and plot menus` | `openMenu`, the Export menu, the right-click plot menu |
 | `Plot management` | Adding and removing plots |
 | `Sidebar` / `Tabs` / `Theme` / `Keyboard shortcuts` / `Autosave` | Sample list, gate tree, active plot (`ui`, `activePanel`), tab switching, theme button, tool keys, `scheduleAutosave` / `offerRestore` |
-| `Example sets` / `Start` | `setupAccuriExample`, `setupTCellExample` (gates and plots), `loadExampleSet`, start-up |
+| `Example sets` / `Start` | `setupAccuriExample`, `setupCellCycleExample`, `setupTCellExample` (gates and plots), `loadExampleSet`, start-up |
 
 A few conventions:
 - **Per-plot view settings** (`PANEL_VIEW`: population, channels, scales, zoom ranges, style, backgate, overlays) go through `panelView()` for undo and workspaces. Add new view settings there and in `cleanWorkspace`.
