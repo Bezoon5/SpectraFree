@@ -17,19 +17,13 @@ Gating, compensation and cell-cycle analysis in a single HTML file. Your data ne
 
 ## Why SpectraFree
 
-Flow cytometry software is usually tied to one instrument, one operating system, or one licence key. SpectraFree started when the software for a BD Accuri C6 Plus would not install cleanly on Windows 11. The question became: could the everyday analysis work (opening FCS files, gating, compensating, counting) just run in a browser?
-
-It can. SpectraFree is one HTML file with no installer, no server and no dependencies. Open it, drop in FCS files, and analyse. It is built as a **training tool** first: it ships with synthetic example data, so new users can learn gating, compensation and cell-cycle analysis without needing access to an instrument.
+SpectaFree is an open source flow cytometry software. Open it, drop in FCS files, and analyse. It is built as a **training tool** first: it ships with synthetic example data, so new users can learn gating, compensation and cell-cycle analysis without needing access to an instrument.
 
 SpectraFree was "vibe coded": it was designed and written in conversation with an AI assistant (Claude, by Anthropic), then tested with automated checks against synthetic data with known answers. Read [Validation](#validation) and [Limitations](#limitations) before you rely on it.
 
 ## Try it
 
-**Online:** if GitHub Pages is enabled for this repository, the app runs at its Pages address (see [Hosting on GitHub Pages](#hosting-on-github-pages)).
-
-**Offline:** download [`index.html`](index.html) and double-click it. It works in any current Chrome, Edge, Firefox or Safari. With no internet connection everything still works; only the web fonts fall back to your system fonts.
-
-**Your own data:** export FCS files from your cytometer software (FCS 2.0, 3.0 or 3.1), then click **Open FCS files** or drag them onto the page. Files are read inside the browser. Nothing is uploaded anywhere.
+Online or offline with your own data. Export FCS files from your cytometer software (FCS 2.0, 3.0 or 3.1), then click **Open FCS files** or drag them onto the page. Files are read inside the browser. Nothing is uploaded anywhere.
 
 ## Features
 
@@ -116,12 +110,6 @@ The automated checks in [`tests/smoke.mjs`](tests/smoke.mjs) run the app in a he
 - **Files of more than about a million events** work, but get slower; live updates while dragging a gate switch off for large files.
 - **The cell-cycle model is a simplified Dean-Jett-Fox fit.** It expects a clear G0/G1 peak with a G2/M peak at about twice the DNA.
 
-## Hosting on GitHub Pages
-
-1. Open the repository's **Settings → Pages**.
-2. Under **Build and deployment**, choose **Deploy from a branch**, branch `main`, folder `/ (root)`, and save.
-3. After a minute the page shows the site's address. Share that link; anyone can use the app without installing anything.
-
 ## How it works
 
 Everything lives in [`index.html`](index.html): about 2,000 lines of plain HTML, CSS and JavaScript, with no framework, no build step and no external libraries. The only network request is for Google Fonts, and the app works without it.
@@ -142,4 +130,4 @@ SpectraFree is free software: you can redistribute it and/or modify it under the
 
 Copyright © 2026 Bezoon5.
 
-FCS is a file standard of the International Society for Advancement of Cytometry (ISAC). BD Accuri is a trademark of Becton, Dickinson and Company. FlowJo, FCS Express and ModFit are trademarks of their respective owners. SpectraFree is not affiliated with or endorsed by any of them.
+FCS is a file standard of the International Society for Advancement of Cytometry (ISAC).
