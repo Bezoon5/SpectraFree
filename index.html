@@ -2605,6 +2605,13 @@ function fillCcParent(){
   sel.value = [...sel.options].some(o => o.value === want) ? want : 'all';
 }
 $('#ccCh').addEventListener('change', () => { const s = cur(); if (s) $('#ccH').value = pulseFor(s, $('#ccCh').value); });
+// Five-corner singlets gate around the area/height ratio band [rmin, rmax] (ratio = area ÷ height): the tip at zero,
+// a corner halfway along the doublet side, the two far corners, and a corner halfway along the upper side.
+// The halfway corners start on the straight edges; drag them to bend an edge around your data.
+function wedgePts(far, rmin, rmax){
+  const mid = far * 0.5;
+  return [[0, 0], [mid, mid / rmax], [far, far / rmax], [far, far / rmin], [mid, mid / rmin]];
+}
 function singletWedge(s, a, hch, parent){
   const A = s.cols[s.idx[a]], H = s.cols[s.idx[hch]], m = popMask(s, parent), r = [], As = [];
   for (let i = 0; i < s.n; i++) if (m[i] && A[i] > 0 && H[i] > 0) As.push(A[i]);
@@ -2615,7 +2622,7 @@ function singletWedge(s, a, hch, parent){
   const k = Math.max(0.12, 4 * mad / med), rmin = med * (1 - k), rmax = med * (1 + k);
   const hiA = makeScale('lin', chOf(s, a)).hi, hiH = makeScale('lin', chOf(s, hch)).hi;
   const far = Math.min(hiA, hiH * rmin) * 0.999;
-  return {pts: [[0, 0], [far, far / rmax], [far, far / rmin]], med, rmin, rmax};
+  return {pts: wedgePts(far, rmin, rmax), med, rmin, rmax};
 }
 function removeCellCycleGates(){
   const kill = new Set(state.gates.filter(g => g.cc).map(g => g.id)); let grew = true;
@@ -3053,7 +3060,7 @@ $('#wsFile').addEventListener('change', e => { const f = e.target.files[0]; e.ta
 
 
 /* ---------------- Batch reports: PDF and PowerPoint ---------------- */
-const APP_VERSION = '1.4.1';
+const APP_VERSION = '1.4.2';
 // One report page for the current sample: plots on the left, statistics on the right.
 // header=false leaves the title out (the PowerPoint slide has it as editable text instead).
 function composeReportPage(W, H, opts = {}){
@@ -3560,7 +3567,7 @@ function setupTCellExample(){
   const w = singletWedge(s0, 'FSC-A', 'FSC-H', 1);
   if (w){
     const far = Math.min(...full.map(x => Math.min(makeScale('lin', chOf(x, 'FSC-A')).hi, makeScale('lin', chOf(x, 'FSC-H')).hi / w.rmin))) * 0.98;
-    gateById(2).pts = [[0, 0], [far, far / w.rmax], [far, far / w.rmin]];
+    gateById(2).pts = wedgePts(far, w.rmin, w.rmax);
   }
   const plots = [['all', 'FSC-A', 'lin', 'SSC-A', 'lin'], [1, 'FSC-A', 'lin', 'FSC-H', 'lin'], [2, '7-AAD-A', 'asinh', 'BUV496-A', 'asinh'], [3, 'FITC-A', 'asinh', 'BV750-A', 'asinh'],
     [4, 'BV480-A', 'asinh', 'BUV615-A', 'asinh'], [4, 'PE-Cy7-A', 'asinh', 'APC-A', 'asinh'], [5, 'BV421-A', 'asinh', 'BV480-A', 'asinh'], [5, 'PE-A', 'asinh', 'BUV395-A', 'asinh']];

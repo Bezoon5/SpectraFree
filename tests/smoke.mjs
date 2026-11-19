@@ -101,6 +101,7 @@ try {
     await page.click('#ccRun');
     cc[kind] = await page.evaluate(() => { const f = state.cc.fit; return f.ok ? { g1: f.G1 / f.total, s: f.S / f.total, g2: f.G2 / f.total, ratio: f.ratio } : null; });
   }
+  check('cell-cycle singlets gate has five corners', await page.evaluate(() => gateById(state.cc.singId)?.pts.length === 5));
   const pc = v => (100 * v).toFixed(1) + '%';
   check('untreated: fit succeeds', !!cc.untreated);
   if (cc.untreated){

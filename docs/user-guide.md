@@ -85,7 +85,7 @@ Type a new number into the FL1-A → FL2-A cell, for example 20. The FL1+ popula
 1. In the sidebar, set **Example data** to **Cell cycle: PI**. Two tubes load (untreated and G2/M arrest) and the **Cell cycle** tab opens. Plot B shows DNA area against height and plot C the DNA histogram, both ungated so you can see the raw data first.
 2. The DNA channel is set to FL2-A · PI and the doublet check to FL2-H. Press **Run auto-gating**.
 3. Plots B and C are gated:
-   - **DNA area against height**: single cells form a straight diagonal band. Clumps of two cells sit below it, because they have twice the DNA area but not twice the height. The **Singlets** gate keeps the band.
+   - **DNA area against height**: single cells form a straight diagonal band. Clumps of two cells sit below it, because they have twice the DNA area but not twice the height. The **Singlets** gate keeps the band. It has five corners: the tip at zero, the two far corners, and one halfway along each long side. Drag the halfway corners to bend an edge around your cells, or double-click an edge to add more corners.
    - **DNA histogram** of single cells, with the fitted G0/G1 (green), S (amber) and G2/M (blue) components and the model total (dashed).
 4. Read the results: about 56% G0/G1, 21% S and 14% G2/M. Check the quality panel: a G2/G1 ratio of 1.96 and a G0/G1 CV of 3.6% are good.
 5. Press **›** to move to **G2/M arrest**. The fit updates by itself: G2/M rises to about 52%, and sub-G1 (apoptotic cells) to about 8%.

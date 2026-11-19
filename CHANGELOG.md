@@ -2,6 +2,11 @@
 
 All notable changes to SpectraFree are recorded here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [semantic versioning](https://semver.org/).
 
+## [1.4.2] - 2026-11-19
+
+### Changed
+- Singlets gates made by cell-cycle auto-gating, the Singlets auto-gate and the T-cell example now have five corners instead of three: the tip at zero, the two far corners, and a corner halfway along each long side, so either edge can be bent by dragging. Results are unchanged.
+
 ## [1.4.1] - 2026-11-19
 
 ### Changed
