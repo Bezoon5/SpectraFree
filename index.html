@@ -1,0 +1,2127 @@
+<!doctype html>
+<!--
+  SpectraFree: open flow cytometry analysis in the browser.
+  Copyright (C) 2026 Bezoon5
+
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="SpectraFree: open-source flow cytometry (FACS) analysis that runs in your browser. Gating, compensation and cell-cycle analysis; your files never leave your computer.">
+<link rel="icon" type="image/svg+xml" href="docs/logo-mark.svg">
+<style>html,body{margin:0}:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}img{max-width:100%}</style>
+<title>SpectraFree</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Lexend:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: instrument-console page on a deep violet ground. Sample bar on top, two plot panels side by side (stacked on phones), compensation, population table below. */
+:root{
+  --bg:#4b2479; --on-bg:#ffffff; --on-bg-muted:#d9c8ee;
+  --surface:#ffffff; --surface-2:#f7f4fb; --ink:#1d1428; --muted:#62577a; --line:#e0d8ea;
+  --accent:#6b33c4; --accent-ink:#ffffff; --accent-soft:#eee6fa; --gate:#1d1428; --sel:#d2462b; --plot:#ffffff;
+  --danger:#b53a24;
+  --d0:#3b4cc0; --d1:#2aa6d6; --d2:#3fb95f; --d3:#efc12b; --d4:#de4426;
+  --cc-g1:#1f9d6a; --cc-s:#d99a12; --cc-g2:#2f63d6; --cc-sub:#8e83a6;
+  --f-sans:"Instrument Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+  --r:6px;
+  --f-brand:"Lexend", "Instrument Sans", system-ui, sans-serif;
+  --brand-free:#6ee7b0; --brand-violet:#a48bff; --brand-green:#45d29a; --brand-amber:#ffc53d;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#24113b; --on-bg:#f3ecfc; --on-bg-muted:#b9a5d4;
+  --surface:#1a1326; --surface-2:#150f20; --ink:#ebe5f4; --muted:#a093b5; --line:#33284a;
+  --accent:#b48cff; --accent-ink:#1a0b33; --accent-soft:#33235a; --gate:#f4f0fa; --sel:#ff8a6b; --plot:#110c1a;
+  --danger:#ff8a6b;
+  --d0:#5a6cf0; --d1:#36b9e8; --d2:#52d073; --d3:#f5cf45; --d4:#ff5a3a;
+  --cc-g1:#45d29a; --cc-s:#f2bd4b; --cc-g2:#7aa2ff; --cc-sub:#a99fc2;
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#24113b; --on-bg:#f3ecfc; --on-bg-muted:#b9a5d4;
+  --surface:#1a1326; --surface-2:#150f20; --ink:#ebe5f4; --muted:#a093b5; --line:#33284a;
+  --accent:#b48cff; --accent-ink:#1a0b33; --accent-soft:#33235a; --gate:#f4f0fa; --sel:#ff8a6b; --plot:#110c1a;
+  --danger:#ff8a6b;
+  --d0:#5a6cf0; --d1:#36b9e8; --d2:#52d073; --d3:#f5cf45; --d4:#ff5a3a;
+  --cc-g1:#45d29a; --cc-s:#f2bd4b; --cc-g2:#7aa2ff; --cc-sub:#a99fc2;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-sans);font-size:14px;line-height:1.45}
+.app{max-width:1280px;margin:0 auto;padding-block:20px 40px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));display:flex;flex-direction:column;gap:16px}
+h1,h2{margin:0;text-wrap:balance}
+h1{color:var(--on-bg)}
+h2{font-size:15px;font-weight:600}
+.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px}
+.logo{display:flex;align-items:center;gap:12px;margin:0;font-family:var(--f-brand);font-weight:600;font-size:36px;line-height:1;letter-spacing:-.035em;color:var(--on-bg)}
+.logo .mark{flex:0 0 auto}
+.wm-free{color:var(--brand-free)}
+.tagline{margin:5px 0 0 68px;font-family:var(--f-brand);font-weight:400;font-size:14px;color:var(--on-bg-muted)}
+.headtools{display:flex;align-items:center;gap:12px 20px;flex-wrap:wrap}
+.hist{display:flex;align-items:center;gap:6px}
+.btn.hbtn{background:transparent;color:var(--on-bg);border-color:color-mix(in srgb, var(--on-bg) 45%, transparent)}
+.btn.hbtn:hover:not(:disabled){border-color:var(--on-bg);background:color-mix(in srgb, var(--on-bg) 10%, transparent)}
+.btn.hbtn:disabled{opacity:.45;cursor:not-allowed}
+.histnote{color:var(--on-bg-muted);font-size:12.5px;max-width:240px;text-align:right;opacity:0;transition:opacity .3s}
+.histnote.show{opacity:1}
+@media (prefers-reduced-motion: reduce){.histnote{transition:none}}
+.load{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.hint{color:var(--on-bg-muted);font-size:13px}
+.load .btn.primary{background:var(--on-bg);color:var(--bg);border-color:var(--on-bg)}
+.load label.btn:focus-within{outline-color:var(--on-bg)}
+.btn{font:inherit;font-weight:500;font-size:13px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:var(--r);padding:7px 12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+.btn.primary:hover{filter:brightness(1.07)}
+button:focus-visible,select:focus-visible,input:focus-visible,label.btn:focus-within,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+select,input[type=text]{font:inherit;font-size:13px;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:6px 8px;min-width:0}
+select{cursor:pointer}
+.samplebar{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 14px}
+.samplebar>label{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+#sampleSel{max-width:min(420px,100%);min-width:0}
+.stepper{display:flex;align-items:center;gap:4px;min-width:0;max-width:100%}
+.btn.step{padding:5px 10px;font-size:16px;line-height:1}
+.tag{font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;background:var(--accent-soft);color:var(--accent);padding:3px 8px;border-radius:999px}
+.meta{display:flex;flex-wrap:wrap;gap:4px 18px;margin:0 0 0 auto;font-size:12px}
+.meta div{display:flex;gap:6px}
+.meta dt{color:var(--muted)}
+.meta dd{margin:0;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.msg{background:var(--surface);border:1px solid var(--danger);color:var(--ink);border-radius:var(--r);padding:10px 14px;font-size:13px}
+.msg.ok{border-color:var(--accent)}
+.msg{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.msgclose{font:inherit;font-size:18px;line-height:1;background:none;border:0;color:var(--muted);cursor:pointer;padding:0 2px}
+.msgclose:hover{color:var(--ink)}
+.plotbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:-4px}
+.addplot{background:var(--on-bg);color:var(--bg);border-color:var(--on-bg);font-weight:600}
+.addplot:hover{filter:brightness(.95)}
+.addplot:disabled{opacity:.55}
+.hint2{color:var(--on-bg-muted);font-size:12.5px}
+.premove{font:inherit;font-size:18px;line-height:1;width:30px;height:30px;display:inline-grid;place-items:center;border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:var(--r);cursor:pointer}
+.premove:hover{color:var(--danger);border-color:var(--danger)}
+.plots{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr));gap:16px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.phead{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.pname{font-weight:600;font-size:14px}
+.tools{display:inline-flex;border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.tools button{font:inherit;font-size:12px;font-weight:500;background:var(--surface);color:var(--ink);border:0;border-left:1px solid var(--line);padding:6px 10px;cursor:pointer}
+.tools button:first-child{border-left:0}
+.tools button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.tools button:hover:not([aria-pressed="true"]){background:var(--surface-2)}
+.axes{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.1fr) minmax(0,1.1fr);gap:8px}
+.phead .pname{margin-right:auto}
+@media (max-width:560px){.axes{grid-template-columns:minmax(0,1fr)}}
+.field{display:flex;flex-direction:column;gap:3px;min-width:0}
+.field label{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+.pair{display:flex;gap:4px;min-width:0}
+.pair select:first-child{flex:1 1 auto;min-width:0}
+.pair select:last-child{flex:0 0 auto;width:82px}
+.field>select{width:100%}
+.plotbox{position:relative;width:100%;aspect-ratio:1/1;max-width:100%}
+.plotbox canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.plotbox canvas.over{touch-action:pan-y}
+.plotbox.drawing canvas.over{cursor:crosshair;touch-action:none}
+.plotbox canvas.over:focus{outline:none}
+.plotbox canvas.over:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.pfoot{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:var(--muted);font-family:var(--f-mono);font-variant-numeric:tabular-nums;flex-wrap:wrap;min-height:18px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;min-width:0}
+.cardhead{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.ctrl{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ctrl label{font-size:12px;color:var(--muted)}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600;text-align:right;padding:6px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+td{padding:5px 10px;border-bottom:1px solid var(--line);text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+#popTable tbody tr{cursor:pointer}
+#popTable tbody tr:hover{background:var(--surface-2)}
+#popTable tr.sel{background:var(--accent-soft)}
+#popTable tr.sel:hover{background:var(--accent-soft)}
+.pcell{display:flex;align-items:center;gap:6px;font-family:var(--f-sans)}
+.tree{color:var(--muted);font-family:var(--f-mono)}
+.gname{width:150px;padding:3px 6px;font-family:var(--f-sans)}
+.rootname{font-family:var(--f-sans);font-weight:600}
+.del{font:inherit;font-size:12px;background:none;border:0;color:var(--danger);cursor:pointer;padding:2px 4px}
+.del:hover{text-decoration:underline}
+.note{margin:10px 0 0;color:var(--muted);font-size:12.5px;max-width:80ch}
+details.kw summary{cursor:pointer;font-weight:600;font-size:15px}
+details.kw summary span{color:var(--muted);font-weight:400;font-size:13px}
+details.kw .tablewrap{max-height:360px;overflow:auto;margin-top:10px}
+#kwTable td{text-align:left;white-space:normal;word-break:break-word}
+#kwTable td:first-child{white-space:nowrap;color:var(--muted);width:1%}
+.copyfall{width:100%;min-height:120px;margin-top:10px;font-family:var(--f-mono);font-size:12px;color:var(--ink);background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r);padding:8px}
+.drop{position:fixed;inset:0;z-index:50;background:color-mix(in srgb, var(--bg) 85%, transparent);display:grid;place-items:center;padding:24px}
+.drop div{border:2px dashed var(--accent);border-radius:12px;padding:40px 48px;font-size:18px;font-weight:600;color:var(--accent);background:var(--surface)}
+.switch{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:500;cursor:pointer;color:var(--ink)}
+.switch input{width:16px;height:16px;accent-color:var(--accent);margin:0}
+.status[data-state="off"]{background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+.status[data-state="bad"]{background:transparent;color:var(--danger);border:1px solid var(--danger)}
+.compgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:16px 28px}
+.compcol{display:flex;flex-direction:column;gap:10px;min-width:0}
+h3{margin:0;font-size:13px;font-weight:600}
+.sub{margin:0;color:var(--muted);font-size:12.5px;max-width:62ch}
+table.spill th,table.spill td{text-align:center;padding:4px}
+table.spill th[scope=row]{text-align:left;font-family:var(--f-sans);text-transform:none;letter-spacing:0;font-size:12.5px;color:var(--ink);font-weight:500}
+table.spill td{border:1px solid var(--line)}
+table.spill td.diag{color:var(--muted);background:var(--surface-2)}
+.spin{width:70px;text-align:right;font-family:var(--f-mono);font-size:12.5px;padding:3px 5px;background:transparent;border:1px solid transparent;border-radius:4px;color:var(--ink)}
+.spin:hover{border-color:var(--line)}
+.spin:focus{border-color:var(--accent);background:var(--surface)}
+td.empty{text-align:left;color:var(--muted);font-family:var(--f-sans)}
+table.ctrls th[scope=row]{text-align:left;font-family:var(--f-sans);text-transform:none;letter-spacing:0;font-size:12.5px;color:var(--ink);font-weight:500;width:1%;white-space:nowrap}
+table.ctrls td{text-align:left;width:100%}
+table.ctrls select{width:100%;max-width:340px;font-family:var(--f-sans)}
+.popfield{max-width:340px}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+fieldset.chs{border:1px solid var(--line);border-radius:var(--r);padding:8px 10px;margin:0;min-width:0}
+fieldset.chs legend{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;padding:0 4px}
+#compChs{display:flex;flex-wrap:wrap;gap:6px 16px}
+.chk{display:inline-flex;align-items:center;gap:6px;font-size:13px;cursor:pointer}
+.chk input{accent-color:var(--accent);margin:0}
+.axismenu{position:fixed;z-index:60;min-width:210px;max-width:min(320px,calc(100vw - 16px));max-height:min(calc(100vh - 16px),560px);overflow:auto;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:4px;box-shadow:0 10px 30px rgba(20,8,40,.28),0 2px 6px rgba(20,8,40,.18)}
+.axismenu .mhead{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;padding:6px 10px 4px}
+.axismenu .mnote{font-size:12px;color:var(--muted);padding:0 10px 4px}
+.axismenu .msep{height:1px;background:var(--line);margin:4px 2px}
+.axismenu button{display:block;width:100%;text-align:left;font:inherit;font-size:13px;background:none;border:0;border-radius:5px;color:var(--ink);padding:6px 10px 6px 28px;cursor:pointer;position:relative;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.axismenu button:hover,.axismenu button:focus-visible{background:var(--accent-soft);outline:none}
+.axismenu button[aria-checked="true"]{font-weight:600;color:var(--accent)}
+.axismenu button[aria-checked="true"]::before{content:"✓";position:absolute;left:10px}
+.autoreport{border:1px solid var(--line);border-radius:var(--r);background:var(--surface-2);padding:8px 10px;font-size:12.5px}
+.autoreport h4{margin:0 0 4px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.autoreport ul{margin:0;padding-left:18px}
+.autoreport li{margin:2px 0}
+.autoreport .why{color:var(--muted)}
+.ccsetup{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:8px 12px;margin-bottom:10px}
+.ccintro{margin-bottom:12px}
+.ccgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,400px),1fr));gap:14px 28px;margin-bottom:14px}
+.ccgrid h3{margin-bottom:6px}
+.chip{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:7px;vertical-align:-1px}
+.qc{list-style:none;margin:0;padding:0;font-size:13px}
+.qc li{display:flex;justify-content:space-between;gap:12px;padding:5px 0;border-bottom:1px solid var(--line)}
+.qc li span:last-child{font-family:var(--f-mono);font-variant-numeric:tabular-nums;text-align:right}
+.qc .warn{color:var(--danger)}
+.qc .good{color:var(--cc-g1)}
+.ccmsg{border:1px dashed var(--line);border-radius:var(--r);padding:10px 12px;color:var(--muted);font-size:13px}
+#ccCompare tr.cur{background:var(--accent-soft)}
+#ccOut td:first-child{font-family:var(--f-sans);white-space:normal;min-width:110px}
+#ccOut th{white-space:normal}
+.privacy{color:var(--on-bg-muted);font-size:12.5px;margin:0}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <h1 class="logo">
+        <svg class="mark" viewBox="8 20 104 78" width="56" height="42" aria-hidden="true">
+          <path d="M10 92 C26 92 27 42 38 42 C49 42 50 92 66 92 Z" fill="var(--brand-violet)" opacity="0.95"></path>
+          <path d="M54 92 C70 92 71 50 82 50 C93 50 94 92 110 92 Z" fill="var(--brand-amber)" opacity="0.95"></path>
+          <path d="M32 92 C48 92 49 26 60 26 C71 26 72 92 88 92 Z" fill="var(--brand-green)" opacity="0.95"></path>
+          <line x1="12" y1="93" x2="108" y2="93" stroke="var(--on-bg)" stroke-width="5" stroke-linecap="round"></line>
+        </svg>
+        <span class="wordmark">spectra<span class="wm-free">free</span></span>
+      </h1>
+      <p class="tagline">open flow cytometry</p>
+    </div>
+    <div class="headtools">
+      <div class="hist" role="group" aria-label="Undo and redo">
+        <span id="histNote" class="histnote" role="status" aria-live="polite"></span>
+        <button type="button" id="undoBtn" class="btn hbtn" disabled title="Nothing to undo (Ctrl+Z)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"></path><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"></path></svg>
+          Undo
+        </button>
+        <button type="button" id="redoBtn" class="btn hbtn" disabled title="Nothing to redo (Ctrl+Shift+Z)">
+          Redo
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 14 5-5-5-5"></path><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"></path></svg>
+        </button>
+      </div>
+      <div class="load">
+        <label class="btn primary" for="file">Open FCS files</label>
+        <input id="file" type="file" accept=".fcs,.FCS,.lmd" multiple hidden>
+        <span class="hint">or drop them anywhere on the page</span>
+      </div>
+    </div>
+  </header>
+
+  <section class="samplebar" aria-label="Sample">
+    <label for="sampleSel">Sample</label>
+    <div class="stepper">
+      <button type="button" id="prevSample" class="btn step" aria-label="Previous sample" title="Previous sample">‹</button>
+      <select id="sampleSel"></select>
+      <button type="button" id="nextSample" class="btn step" aria-label="Next sample" title="Next sample">›</button>
+    </div>
+    <span id="exampleTag" class="tag" hidden>Example data</span>
+    <dl class="meta" id="meta"></dl>
+  </section>
+
+  <div id="msg" class="msg" role="status" hidden><span id="msgText"></span><button type="button" id="msgClose" class="msgclose" aria-label="Dismiss message">×</button></div>
+
+  <main class="plots" id="plots"></main>
+  <div class="plotbar">
+    <button type="button" id="addPlot" class="btn addplot">+ Add plot</button>
+    <span class="hint2" id="plotHint">New plots show the selected gate's population.</span>
+  </div>
+
+  <section class="card" id="compCard">
+    <div class="cardhead">
+      <h2>Compensation</h2>
+      <div class="ctrl">
+        <label class="switch" for="compOn"><input type="checkbox" id="compOn"> Apply compensation</label>
+        <span id="compStatus" class="tag status" data-state="off">Off</span>
+      </div>
+    </div>
+    <div class="compgrid">
+      <div class="compcol">
+        <h3>Spillover matrix</h3>
+        <p class="sub">Each row is one dye's detector. The numbers are how much of that signal, as a percentage, also lands in the other detectors. Type to edit; plots update as you go.</p>
+        <div class="tablewrap"><table id="spillTable" class="spill"></table></div>
+        <div class="btnrow">
+          <button type="button" id="fromFile" class="btn">Use matrix from file</button>
+          <button type="button" id="clearSpill" class="btn">Set all to 0</button>
+        </div>
+        <fieldset class="chs"><legend>Channels to compensate</legend><div id="compChs"></div></fieldset>
+      </div>
+      <div class="compcol">
+        <h3>Calculate from single-stain controls</h3>
+        <p class="sub">Load an unstained tube and one tube per dye stained with that dye alone. <strong>Auto-compensate</strong> finds the control tubes, picks out the cells and calculates the matrix in one step. To do it by hand, assign the tubes below and press Calculate.</p>
+        <div class="tablewrap"><table id="ctrlTable" class="ctrls"></table></div>
+        <div class="field popfield"><label for="ctrlPop">Use events in</label><select id="ctrlPop"></select></div>
+        <div class="btnrow">
+          <button type="button" id="autoCompBtn" class="btn primary">Auto-compensate</button>
+          <button type="button" id="autoBtn" class="btn">Find control tubes</button>
+          <button type="button" id="calcBtn" class="btn">Calculate from assignments</button>
+        </div>
+        <div id="autoReport" class="autoreport" hidden></div>
+      </div>
+    </div>
+    <p class="note">While compensation is on, plots, gates and statistics use compensated values, and those axes are labelled Comp-. Compensation can push events below zero: switch fluorescence axes to Biexponential to see them instead of piling up on the log axis.</p>
+  </section>
+
+  <section class="card" id="ccCard">
+    <div class="cardhead">
+      <h2>Cell cycle</h2>
+      <div class="ctrl">
+        <button type="button" id="ccRun" class="btn primary">Run auto-gating</button>
+        <button type="button" id="ccCopy" class="btn">Copy results</button>
+      </div>
+    </div>
+    <div class="ccsetup">
+      <div class="field"><label for="ccCh">DNA channel (area)</label><select id="ccCh"></select></div>
+      <div class="field"><label for="ccH">Doublet check against</label><select id="ccH"></select></div>
+      <div class="field"><label for="ccParent">Start from</label><select id="ccParent"></select></div>
+    </div>
+    <p class="sub ccintro">Auto-gating first keeps single cells: clumps of two cells have twice the DNA area but not twice the height. It then fits the DNA histogram with a G0/G1 peak, a G2/M peak at about twice the DNA, and S phase between them. It adds gates and two plots so you can check the result. To try it, pick <strong>Example: cell cycle, untreated</strong> or <strong>G2/M arrest</strong> in the sample list.</p>
+    <div id="ccOut"></div>
+  </section>
+
+  <section class="card">
+    <div class="cardhead">
+      <h2>Populations</h2>
+      <div class="ctrl">
+        <label for="statSel">Statistics for</label>
+        <select id="statSel"></select>
+        <button id="copyBtn" class="btn" type="button">Copy table</button>
+      </div>
+    </div>
+    <div class="tablewrap"><table id="popTable"></table></div>
+    <div id="copyFallback" hidden><p class="note">Your browser blocked automatic copying. The table is selected below: press Ctrl+C (or ⌘C) to copy it.</p><textarea id="copyText" class="copyfall" aria-label="Table text to copy"></textarea></div>
+    <p class="note">Gates apply to every loaded sample, matched by channel name, so you can switch tubes and compare. Right-click an axis title (or click it with the Select tool) to change its channel or scale. Click a gate to select it. Drag inside it to move it, or drag its handles to resize it: corners and sides for rectangles, corners for polygons, ends for histogram ranges. Double-click a polygon's edge to add a corner, or a corner to remove it. Press Esc during a drag to undo it, or Delete to remove the selected gate. To draw a polygon, click to add corners, then double-click or click the first corner to close.</p>
+  </section>
+
+  <details class="card kw">
+    <summary>File keywords <span id="kwCount"></span></summary>
+    <div class="tablewrap"><table id="kwTable"></table></div>
+  </details>
+
+  <p class="privacy">Files are read inside your browser. Nothing is uploaded.</p>
+</div>
+
+<div id="drop" class="drop" hidden><div>Drop FCS files to open them</div></div>
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const nf = new Intl.NumberFormat('en-GB');
+
+/* ---------------- FCS parsing ---------------- */
+function parseText(t){
+  const d = t[0], parts = []; let cur = '';
+  for (let i = 1; i < t.length; i++){
+    const c = t[i];
+    if (c === d){ if (t[i+1] === d){ cur += d; i++; } else { parts.push(cur); cur = ''; } }
+    else cur += c;
+  }
+  if (cur.trim().length) parts.push(cur);
+  const kw = {};
+  for (let i = 0; i + 1 < parts.length; i += 2) kw[parts[i].trim().toUpperCase()] = parts[i+1].trim();
+  return kw;
+}
+
+function parseFCS(buf, name){
+  const u8 = new Uint8Array(buf), dv = new DataView(buf);
+  const asc = (a, b) => { let s = ''; for (let i = a; i < b && i < u8.length; i++) s += String.fromCharCode(u8[i]); return s; };
+  const ver = asc(0, 6);
+  if (!/^FCS[23]\.\d/.test(ver)) throw new Error('it is not an FCS file (no FCS header). Export the data as FCS from the cytometer software and try again.');
+  const num = a => parseInt(asc(a, a + 8).trim() || '0', 10) || 0;
+  const tS = num(10), tE = num(18);
+  let dS = num(26), dE = num(34);
+  const tb = u8.subarray(tS, tE + 1);
+  let text;
+  try { text = new TextDecoder('utf-8', {fatal:true}).decode(tb); } catch(e){ text = new TextDecoder('latin1').decode(tb); }
+  const kw = parseText(text);
+  if (!dS || !dE){ dS = parseInt(kw['$BEGINDATA'] || '0', 10); dE = parseInt(kw['$ENDDATA'] || '0', 10); }
+  const P = parseInt(kw['$PAR'] || '0', 10);
+  if (!P) throw new Error('the file lists no parameters ($PAR is missing).');
+  if ((kw['$MODE'] || 'L').toUpperCase() !== 'L') throw new Error('only list-mode FCS files are supported.');
+  const dt = (kw['$DATATYPE'] || '').toUpperCase();
+  if (!/^[IFD]$/.test(dt)) throw new Error(`data type "${dt || '?'}" is not supported (expected I, F or D).`);
+  const little = (kw['$BYTEORD'] || '1,2,3,4').replace(/\s/g, '').startsWith('1');
+  const ch = [], readers = [];
+  let bpe = 0;
+  for (let p = 1; p <= P; p++){
+    const B = parseInt(kw[`$P${p}B`] || (dt === 'D' ? '64' : '32'), 10);
+    let R = parseFloat(kw[`$P${p}R`] || '0');
+    const N = kw[`$P${p}N`] || `P${p}`, S = kw[`$P${p}S`] || '';
+    const E = (kw[`$P${p}E`] || '0,0').split(',').map(Number);
+    const G = parseFloat(kw[`$P${p}G`] || '1') || 1;
+    const bytes = dt === 'F' ? 4 : dt === 'D' ? 8 : B / 8;
+    if (dt === 'I' && ![8,16,32].includes(B)) throw new Error(`parameter ${N} uses ${B}-bit integers, which this viewer does not read.`);
+    readers.push({bytes, R, E, G, mask: dt === 'I' && R > 0 && Number.isInteger(Math.log2(R)) && R < 2 ** B});
+    ch.push({name: N, stain: S, label: S && S !== N ? `${N} · ${S}` : N, range: R});
+    bpe += bytes;
+  }
+  if (!(dS > 0) || !(dE >= dS)) throw new Error('the file does not say where its data starts and ends.');
+  const avail = Math.floor((dE - dS + 1) / bpe);
+  let n = parseInt(kw['$TOT'] || '0', 10);
+  if (!n || n > avail) n = Math.max(0, avail);
+  if (dS + n * bpe > buf.byteLength) throw new Error('the file is shorter than its header says. It may be truncated.');
+  const cols = ch.map(() => new Float32Array(n));
+  let off = dS;
+  for (let e = 0; e < n; e++){
+    for (let p = 0; p < P; p++){
+      const r = readers[p]; let v;
+      if (dt === 'F') v = dv.getFloat32(off, little);
+      else if (dt === 'D') v = dv.getFloat64(off, little);
+      else {
+        v = r.bytes === 4 ? dv.getUint32(off, little) : r.bytes === 2 ? dv.getUint16(off, little) : dv.getUint8(off);
+        if (r.mask) v = v % r.R;
+        if (r.E[0] > 0) v = (r.E[1] > 0 ? r.E[1] : 1) * Math.pow(10, r.E[0] * v / r.R);
+        else if (r.G !== 1) v = v / r.G;
+      }
+      cols[p][e] = v; off += r.bytes;
+    }
+  }
+  ch.forEach((c, p) => {
+    chStats(c, cols[p], n);
+    const r = readers[p];
+    if (r.E[0] > 0) c.range = (r.E[1] > 0 ? r.E[1] : 1) * Math.pow(10, r.E[0]);
+    if (!(c.range > 0) || c.max > c.range * 1.01) c.range = Math.max(c.max, 1);
+    c.isTime = /^time$/i.test(c.name);
+    c.isScatter = /^(FSC|SSC)/i.test(c.name);
+  });
+  const idx = {}; ch.forEach((c, i) => { if (!(c.name in idx)) idx[c.name] = i; });
+  return {name, kw, ver, n, ch, cols: cols.slice(), raw: cols, idx, ucache: new Map(), example: false, spill: parseSpill(kw, ch)};
+}
+function chStats(c, a, n){
+  let mn = Infinity, mx = -Infinity;
+  for (let i = 0; i < n; i++){ const v = a[i]; if (v < mn) mn = v; if (v > mx) mx = v; }
+  c.min = n ? mn : 0; c.max = n ? mx : 1;
+  const step = Math.max(1, Math.floor(n / 20000)), pos = [];
+  for (let i = 0; i < n; i += step) if (a[i] > 0) pos.push(a[i]);
+  pos.sort((x, y) => x - y);
+  c.plo = pos.length ? pos[Math.floor(pos.length * 0.005)] : 0;
+  const all = []; for (let i = 0; i < n; i += step) all.push(a[i]);
+  all.sort((x, y) => x - y);
+  c.phi = all.length ? all[Math.floor((all.length - 1) * 0.999)] : 0;
+}
+const niceCeil = v => { const p = 10 ** Math.floor(Math.log10(v)); for (const m of [1, 1.2, 1.5, 2, 2.5, 3, 3.5, 4, 5, 6, 7, 8, 10]) if (m * p >= v) return m * p; return 10 * p; };
+const DNA_DYE = /(^|[^a-z])(PI|propidium|DAPI|7-?AAD|DRAQ ?5|Hoechst|DNA|FxCycle|Vybrant)([^a-z]|$)/i;
+function parseSpill(kw, ch){
+  const raw = kw['$SPILLOVER'] || kw['SPILL'] || kw['$SPILL'] || kw['SPILLOVER'];
+  if (!raw) return null;
+  const p = raw.split(',').map(x => x.trim()), n = parseInt(p[0], 10);
+  if (!(n > 0) || p.length < 1 + n + n * n) return null;
+  const names = p.slice(1, 1 + n).map(x => /^\d+$/.test(x) && ch[+x - 1] ? ch[+x - 1].name : x);
+  const v = p.slice(1 + n).map(Number);
+  return {names, M: names.map((_, i) => names.map((_, j) => v[i * n + j]))};
+}
+
+/* ---------------- Scales ---------------- */
+function defaultScale(c){
+  if (!c) return 'lin';
+  if (c.isTime || /width/i.test(c.name) || DNA_DYE.test(c.stain || '')) return 'lin';
+  if (c.range >= 1e6) return 'log';
+  return c.isScatter ? 'lin' : 'asinh';
+}
+function makeScale(type, c){
+  const R = c.range;
+  if (type === 'log'){
+    let lo = R >= 1e6 ? 10 : 1;
+    if (c.plo > 0) lo = Math.min(Math.max(lo, 10 ** Math.floor(Math.log10(c.plo))), R / 1000);
+    const a = Math.log10(lo), b = Math.log10(R), k = b - a;
+    return {type, lo, hi: R, fwd: v => v > 0 ? (Math.log10(v) - a) / k : -1, inv: u => Math.pow(10, a + u * k), a, b};
+  }
+  if (type === 'asinh'){
+    const cf = Math.max(R / 1750, 1), lo = -10 * cf, A = Math.asinh(lo / cf), B = Math.asinh(R / cf), k = B - A;
+    return {type, lo, hi: R, cf, fwd: v => (Math.asinh(v / cf) - A) / k, inv: u => cf * Math.sinh(A + u * k)};
+  }
+  const hi = c.isTime ? Math.max(c.max, 1) : (c.phi > 0 ? Math.min(R, niceCeil(c.phi * 1.25)) : R);
+  const lo = Math.min(0, Math.max(c.min, -0.05 * hi)), k = hi - lo;
+  return {type: 'lin', lo, hi, fwd: v => (v - lo) / k, inv: u => lo + u * k};
+}
+// a gate edge drawn on the plot border extends to infinity, so events pushed off-scale (e.g. by compensation) stay inside
+const EDGE = 1e30;
+const edgeInv = (sc, u) => u <= 0.002 ? -EDGE : u >= 0.998 ? EDGE : sc.inv(u);
+const cu = u => u < -0.05 ? -0.05 : u > 1.05 ? 1.05 : u;
+function niceStep(span, target){
+  const raw = span / target, p = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / p;
+  return (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * p;
+}
+function fmtSI(v){
+  const a = Math.abs(v);
+  const t = (x, s) => (+(x).toPrecision(3)).toString() + s;
+  if (a >= 1e9) return t(v / 1e9, 'G');
+  if (a >= 1e6) return t(v / 1e6, 'M');
+  if (a >= 1e3) return t(v / 1e3, 'K');
+  if (a === 0) return '0';
+  if (a >= 100) return Math.round(v).toString();
+  return (+v.toPrecision(3)).toString();
+}
+function ticks(sc){
+  const out = [];
+  if (sc.type === 'log'){
+    for (let k = Math.ceil(sc.a); k <= Math.floor(sc.b); k++){
+      out.push({u: sc.fwd(10 ** k), exp: k, major: true});
+      for (let m = 2; m < 10; m++){ const v = m * 10 ** k; if (v < sc.hi) out.push({u: sc.fwd(v), major: false}); }
+    }
+  } else if (sc.type === 'asinh'){
+    out.push({u: sc.fwd(0), label: '0', major: true});
+    const k0 = Math.max(1, Math.ceil(Math.log10(sc.cf)));
+    for (let k = k0; 10 ** k <= sc.hi; k++){
+      out.push({u: sc.fwd(10 ** k), exp: k, major: true});
+      if (-(10 ** k) >= sc.lo) out.push({u: sc.fwd(-(10 ** k)), exp: k, neg: true, major: true});
+    }
+  } else {
+    const st = niceStep(sc.hi - sc.lo, 5);
+    for (let v = Math.ceil(sc.lo / st) * st; v <= sc.hi + st * 1e-6; v += st) out.push({u: sc.fwd(v), label: fmtSI(v), major: true});
+  }
+  return out.filter(t => t.u >= -1e-6 && t.u <= 1 + 1e-6).sort((a, b) => a.u - b.u);
+}
+
+/* ---------------- State ---------------- */
+const state = {samples: [], cur: -1, gates: [], nextId: 1, sel: null, statCh: 'FL1-A'};
+const cur = () => state.samples[state.cur] || null;
+const chOf = (s, name) => s && name in s.idx ? s.ch[s.idx[name]] : null;
+const gateById = id => state.gates.find(g => g.id === id);
+const chLabel = (s, name) => (s.compChs && s.compChs.has(name) ? 'Comp-' : '') + chOf(s, name).label;
+state.comp = {on: false, chs: [], S: {}, ctrl: {}, unst: null, pop: 'auto'};
+// Undo/redo history: whole-analysis snapshots (gates, compensation, cell-cycle set-up, plot layout)
+const hist = {undo: [], redo: [], cur: null, sig: '', busy: 0};
+
+function getU(s, ci, type){
+  const key = ci + '|' + type; let a = s.ucache.get(key); if (a) return a;
+  const sc = makeScale(type, s.ch[ci]), X = s.cols[ci]; a = new Float32Array(s.n);
+  for (let i = 0; i < s.n; i++){ const u = sc.fwd(X[i]); a[i] = u > 0 ? (u < 1 ? u : 1) : 0; }
+  s.ucache.set(key, a); return a;
+}
+function rootMask(s){ return s.root || (s.root = new Uint8Array(s.n).fill(1)); }
+
+function gateMask(s, g, parent){
+  const out = new Uint8Array(s.n);
+  const xi = s.idx[g.xch]; if (xi === undefined) return out;
+  const sx = makeScale(g.xs, s.ch[xi]), U = getU(s, xi, g.xs);
+  if (g.type === 'range'){
+    const ua = cu(sx.fwd(g.pts[0][0])), ub = cu(sx.fwd(g.pts[1][0]));
+    const lo = Math.min(ua, ub), hi = Math.max(ua, ub);
+    for (let i = 0; i < s.n; i++) if (parent[i] && U[i] >= lo && U[i] <= hi) out[i] = 1;
+    return out;
+  }
+  const yi = s.idx[g.ych]; if (yi === undefined) return out;
+  const sy = makeScale(g.ys, s.ch[yi]), V = getU(s, yi, g.ys);
+  const vx = g.pts.map(p => cu(sx.fwd(p[0]))), vy = g.pts.map(p => cu(sy.fwd(p[1]))), m = vx.length;
+  const x0 = Math.min(...vx), x1 = Math.max(...vx), y0 = Math.min(...vy), y1 = Math.max(...vy);
+  for (let i = 0; i < s.n; i++){
+    if (!parent[i]) continue;
+    const x = U[i], y = V[i];
+    if (x < x0 || x > x1 || y < y0 || y > y1) continue;
+    let c = false;
+    for (let a = 0, b = m - 1; a < m; b = a++){
+      if ((vy[a] > y) !== (vy[b] > y) && x < (vx[b] - vx[a]) * (y - vy[a]) / (vy[b] - vy[a]) + vx[a]) c = !c;
+    }
+    if (c) out[i] = 1;
+  }
+  return out;
+}
+function computeMasks(s){
+  if (!s) return;
+  s.masks = new Map(); s.counts = new Map();
+  const root = rootMask(s); s.counts.set('all', s.n);
+  for (const g of state.gates){
+    const parent = g.parent == null ? root : s.masks.get(g.parent);
+    const m = gateMask(s, g, parent || new Uint8Array(s.n));
+    let c = 0; for (let i = 0; i < s.n; i++) c += m[i];
+    s.masks.set(g.id, m); s.counts.set(g.id, c);
+  }
+}
+const popMask = (s, id) => id === 'all' ? rootMask(s) : (s.masks?.get(id) || new Uint8Array(s.n));
+const popCount = (s, id) => s.counts?.get(id) ?? 0;
+const popName = id => id === 'all' ? 'All events' : (gateById(id)?.name || '?');
+function treeOrder(){
+  const out = [];
+  const walk = (pid, depth) => state.gates.filter(g => (g.parent ?? null) === pid).forEach(g => { out.push({g, depth}); walk(g.id, depth + 1); });
+  walk(null, 1);
+  return out;
+}
+
+/* ---------------- Colours ---------------- */
+function tok(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+function hexRGB(h){
+  h = h.replace('#', ''); if (h.length === 3) h = h.split('').map(c => c + c).join('');
+  const n = parseInt(h, 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+function buildLUT(){
+  const stops = ['--d0','--d1','--d2','--d3','--d4'].map(t => hexRGB(tok(t) || '#888888'));
+  const lut = new Uint8Array(256 * 3);
+  for (let i = 0; i < 256; i++){
+    const t = i / 255 * 4, k = Math.min(3, Math.floor(t)), f = t - k;
+    for (let c = 0; c < 3; c++) lut[i*3+c] = Math.round(stops[k][c] * (1 - f) + stops[k+1][c] * f);
+  }
+  return lut;
+}
+function palette(){
+  return {ink: tok('--ink'), muted: tok('--muted'), line: tok('--line'), plot: tok('--plot'), accent: tok('--accent'),
+    gate: tok('--gate'), sel: tok('--sel'), surface: tok('--surface'), lut: buildLUT()};
+}
+
+/* ---------------- Plot panel ---------------- */
+const SCALE_OPTS = '<option value="lin">Linear</option><option value="log">Log</option><option value="asinh">Biexponential</option>';
+const HIST = '__hist';
+const M = {l: 60, r: 14, t: 12, b: 46};
+
+class Panel {
+  constructor(el, key, defs){
+    this.el = el; this.key = key; this.defs = defs;
+    this.tool = 'select'; this.pop = 'all'; this.xn = null; this.yn = null; this.xs = 'lin'; this.ys = 'lin';
+    this.draft = null; this.drag = null; this.paths = []; this.size = 0;
+    this.hit = document.createElement('canvas').getContext('2d');
+    el.innerHTML = `
+      <div class="phead">
+        <span class="pname">Plot ${key}</span>
+        <div class="tools ptype" role="group" aria-label="Plot ${key} type">
+          <button type="button" data-ptype="dot" title="Two channels against each other">Dot plot</button>
+          <button type="button" data-ptype="hist" title="One channel as a histogram">Histogram</button>
+        </div>
+        <div class="tools gtools" role="group" aria-label="Plot ${key} tools">
+          <button type="button" data-tool="select" title="Select and move gates">Select</button>
+          <button type="button" data-tool="rect" title="Drag to draw a rectangle gate">Rectangle</button>
+          <button type="button" data-tool="poly" title="Click corners, double-click to finish">Polygon</button>
+          <button type="button" data-tool="range" title="Drag across the histogram to draw a range gate">Range</button>
+        </div>
+        <button type="button" class="premove" title="Remove this plot" aria-label="Remove plot ${key}">×</button>
+      </div>
+      <div class="axes">
+        <div class="field"><label for="${key}-pop">Show events in</label><select id="${key}-pop"></select></div>
+        <div class="field"><label for="${key}-x">X axis</label><div class="pair"><select id="${key}-x"></select><select id="${key}-xs" aria-label="Plot ${key} X scale">${SCALE_OPTS}</select></div></div>
+        <div class="field yfield"><label for="${key}-y">Y axis</label><div class="pair"><select id="${key}-y"></select><select id="${key}-ys" aria-label="Plot ${key} Y scale">${SCALE_OPTS}</select></div></div>
+      </div>
+      <div class="plotbox"><canvas class="base"></canvas><canvas class="over" role="img" tabindex="0" aria-label="Plot ${key}. Draw gates here."></canvas></div>
+      <div class="pfoot"><span class="count"></span><span class="readout"></span></div>`;
+    const q = s => el.querySelector(s);
+    this.popSel = q(`#${key}-pop`); this.xSel = q(`#${key}-x`); this.ySel = q(`#${key}-y`);
+    this.xsSel = q(`#${key}-xs`); this.ysSel = q(`#${key}-ys`);
+    this.box = q('.plotbox'); this.base = q('canvas.base'); this.over = q('canvas.over');
+    this.countEl = q('.count'); this.readEl = q('.readout');
+    this.toolBtns = [...el.querySelectorAll('.gtools button')];
+    this.typeBtns = [...el.querySelectorAll('.ptype button')];
+    this.yField = q('.yfield');
+    this.typeBtns.forEach(b => b.addEventListener('click', () => this.setType(b.dataset.ptype)));
+    this.toolBtns.forEach(b => b.addEventListener('click', () => this.setTool(b.dataset.tool)));
+    this.popSel.addEventListener('change', () => { this.pop = this.popSel.value === 'all' ? 'all' : +this.popSel.value; this.draft = null; this.draw(); markChange(); });
+    this.xSel.addEventListener('change', () => { this.xn = this.xSel.value; this.xs = defaultScale(chOf(cur(), this.xn)); this.syncControls(); this.draft = null; this.draw(); markChange(); });
+    this.ySel.addEventListener('change', () => {
+      this.yn = this.ySel.value; this.ys = defaultScale(chOf(cur(), this.yn));
+      this.draft = null; this.syncControls(); this.draw(); markChange();
+    });
+    this.xsSel.addEventListener('change', () => { this.xs = this.xsSel.value; this.draft = null; this.draw(); markChange(); });
+    this.ysSel.addEventListener('change', () => { this.ys = this.ysSel.value; this.draft = null; this.draw(); markChange(); });
+    this.ro = new ResizeObserver(() => this.resize()); this.ro.observe(this.box);
+    this.removeBtn = q('.premove');
+    this.removeBtn.addEventListener('click', () => removePanel(this));
+    this.over.addEventListener('pointerdown', e => this.onDown(e));
+    this.over.addEventListener('pointermove', e => this.onMove(e));
+    this.over.addEventListener('pointerup', e => this.onUp(e));
+    this.over.addEventListener('contextmenu', e => {
+      const r = this.over.getBoundingClientRect(), ax = this.axisAt(e.clientX - r.left, e.clientY - r.top);
+      if (ax){ e.preventDefault(); openAxisMenu(this, ax, e.clientX, e.clientY); }
+    });
+    this.over.addEventListener('pointerleave', () => { if (this.hoverAxis){ this.hoverAxis = null; this.drawOver(); } this.readEl.textContent = ''; if (this.draft?.type === 'poly'){ this.draft.hover = null; this.drawOver(); } });
+    this.over.addEventListener('dblclick', e => this.onDbl(e));
+    this.over.addEventListener('pointercancel', () => { const moved = this.drag?.moved; this.drag = null; if (moved) refresh(); if (this.draft && this.draft.type !== 'poly'){ this.draft = null; this.drawOver(); } });
+    this.setTool('select');
+  }
+  get isHist(){ return this.yn === HIST; }
+  axisAt(mx, my){
+    const G = this.geom();
+    if (mx >= G.x0 && mx <= G.x0 + G.w && my > G.y0 + G.h + 2 && my <= this.size) return 'x';
+    if (mx >= 0 && mx < G.x0 - 2 && my >= G.y0 && my <= G.y0 + G.h) return 'y';
+    return null;
+  }
+  setChannel(axis, name){
+    const s = cur(); if (!s || !(name in s.idx)) return;
+    if (axis === 'x'){ this.xn = name; this.xs = defaultScale(chOf(s, name)); }
+    else { if (this.isHist) this.y2 = name; this.yn = name; this.ys = defaultScale(chOf(s, name)); }
+    this.draft = null; this.setTool('select'); this.syncControls(); this.draw(); markChange();
+  }
+  setScale(axis, type){
+    if (axis === 'x') this.xs = type; else if (!this.isHist) this.ys = type;
+    this.draft = null; this.syncControls(); this.draw(); markChange();
+  }
+  setType(t){
+    const s = cur();
+    if (t === 'hist' && !this.isHist){ this.y2 = this.yn; this.yn = HIST; }
+    else if (t === 'dot' && this.isHist){
+      const back = s && this.y2 in s.idx ? this.y2 : (this.defs.y.find(n => s && n in s.idx) || s?.ch[Math.min(this.defs.fy, s.ch.length - 1)].name);
+      this.yn = back; this.ys = defaultScale(chOf(s, back));
+    }
+    this.draft = null; this.setTool('select'); this.syncControls(); this.draw(); markChange();
+  }
+  setTool(t){
+    if (this.isHist && (t === 'rect' || t === 'poly')) t = 'select';
+    if (!this.isHist && t === 'range') t = 'select';
+    this.tool = t; this.draft = null;
+    this.toolBtns.forEach(b => {
+      b.setAttribute('aria-pressed', String(b.dataset.tool === t));
+      b.hidden = this.isHist ? (b.dataset.tool === 'rect' || b.dataset.tool === 'poly') : b.dataset.tool === 'range';
+    });
+    this.box.classList.toggle('drawing', t !== 'select');
+    this.drawOver();
+  }
+  fillChannels(){
+    const s = cur(); if (!s) return;
+    const opts = s.ch.map(c => `<option value="${esc(c.name)}">${esc(c.label)}</option>`).join('');
+    this.xSel.innerHTML = opts;
+    this.ySel.innerHTML = opts;
+    const pick = (want, list, fb) => { for (const w of [want, ...list]) if (w && (w === HIST || w in s.idx)) return w; return s.ch[Math.min(fb, s.ch.length - 1)].name; };
+    const nx = pick(this.xn, this.defs.x, this.defs.fx), ny = pick(this.yn, this.defs.y, this.defs.fy);
+    if (nx !== this.xn){ this.xn = nx; this.xs = defaultScale(chOf(s, nx)); }
+    if (ny !== this.yn){ this.yn = ny; if (ny !== HIST) this.ys = defaultScale(chOf(s, ny)); }
+    if (this.isHist && !(this.y2 in s.idx)) this.y2 = pick(null, this.defs.y, this.defs.fy);
+    this.syncControls();
+  }
+  fillPops(){
+    const opts = [`<option value="all">All events</option>`].concat(
+      treeOrder().map(({g, depth}) => `<option value="${g.id}">${'  '.repeat(depth - 1)}${esc(g.name)}</option>`));
+    this.popSel.innerHTML = opts.join('');
+    if (this.pop !== 'all' && !gateById(this.pop)) this.pop = 'all';
+    this.popSel.value = String(this.pop);
+  }
+  syncControls(){
+    this.xSel.value = this.xn; this.ySel.value = this.isHist ? (this.y2 || '') : this.yn;
+    this.xsSel.value = this.xs; this.ysSel.value = this.ys;
+    this.yField.hidden = this.isHist;
+    this.typeBtns.forEach(b => b.setAttribute('aria-pressed', String((b.dataset.ptype === 'hist') === this.isHist)));
+    this.setTool(this.tool);
+  }
+  resize(){
+    const w = this.box.clientWidth; if (!w) return;
+    const dpr = window.devicePixelRatio || 1;
+    this.size = w; this.dpr = dpr;
+    for (const c of [this.base, this.over]){ c.width = Math.round(w * dpr); c.height = Math.round(w * dpr); }
+    this.draw();
+  }
+  geom(){ const S = this.size; return {x0: M.l, y0: M.t, w: Math.max(10, S - M.l - M.r), h: Math.max(10, S - M.t - M.b)}; }
+  scales(s){
+    const sx = makeScale(this.xs, chOf(s, this.xn));
+    const sy = this.isHist ? null : makeScale(this.ys, chOf(s, this.yn));
+    return {sx, sy};
+  }
+  draw(){
+    const s = cur(); if (!this.size) return;
+    const ctx = this.base.getContext('2d'); ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    ctx.clearRect(0, 0, this.size, this.size);
+    if (!s || !chOf(s, this.xn)){ this.drawOver(); return; }
+    const pal = palette(), G = this.geom();
+    ctx.fillStyle = pal.plot; ctx.fillRect(G.x0, G.y0, G.w, G.h);
+    const mask = popMask(s, this.pop), xi = s.idx[this.xn];
+    const {sx, sy} = this.scales(s);
+    this.sx = sx; this.sy = sy;
+    let shown = 0; for (let i = 0; i < s.n; i++) shown += mask[i];
+    if (this.isHist){
+      const NB = Math.max(64, Math.min(256, Math.floor(G.w / 2))), bins = new Float64Array(NB), U = getU(s, xi, this.xs);
+      for (let i = 0; i < s.n; i++) if (mask[i]) bins[Math.min(NB - 1, (U[i] * NB) | 0)]++;
+      const sm = bins;
+      let mx = 0; for (const v of sm) if (v > mx) mx = v;
+      const ymax = Math.max(1, mx * 1.08);
+      this.hmax = ymax; this.hNB = NB;
+      ctx.save(); ctx.beginPath(); ctx.rect(G.x0, G.y0, G.w, G.h); ctx.clip();
+      ctx.beginPath(); ctx.moveTo(G.x0, G.y0 + G.h);
+      for (let i = 0; i < NB; i++){ const x = G.x0 + (i + 0.5) / NB * G.w, y = G.y0 + G.h - sm[i] / ymax * G.h; ctx.lineTo(x, y); }
+      ctx.lineTo(G.x0 + G.w, G.y0 + G.h); ctx.closePath();
+      ctx.globalAlpha = 0.22; ctx.fillStyle = pal.accent; ctx.fill(); ctx.globalAlpha = 1;
+      ctx.lineWidth = 1.5; ctx.strokeStyle = pal.accent; ctx.stroke();
+      ctx.restore();
+      this.axisX(ctx, sx, G, pal, chLabel(s, this.xn));
+      this.axisYCount(ctx, ymax, G, pal);
+    } else {
+      const yi = s.idx[this.yn], U = getU(s, xi, this.xs), V = getU(s, yi, this.ys);
+      const gw = Math.max(1, Math.floor(G.w / 2)), gh = Math.max(1, Math.floor(G.h / 2)), cnt = new Uint32Array(gw * gh);
+      for (let i = 0; i < s.n; i++){
+        if (!mask[i]) continue;
+        const bx = Math.min(gw - 1, (U[i] * gw) | 0), by = Math.min(gh - 1, ((1 - V[i]) * gh) | 0);
+        cnt[by * gw + bx]++;
+      }
+      let mx = 0; for (let i = 0; i < cnt.length; i++) if (cnt[i] > mx) mx = cnt[i];
+      const off = document.createElement('canvas'); off.width = gw; off.height = gh;
+      const octx = off.getContext('2d'), img = octx.createImageData(gw, gh), lm = Math.log(1 + mx) || 1, L = pal.lut;
+      for (let i = 0; i < cnt.length; i++){
+        if (!cnt[i]) continue;
+        const k = Math.min(255, Math.round(Math.log(1 + cnt[i]) / lm * 255)) * 3;
+        img.data[i*4] = L[k]; img.data[i*4+1] = L[k+1]; img.data[i*4+2] = L[k+2]; img.data[i*4+3] = 255;
+      }
+      octx.putImageData(img, 0, 0);
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(off, G.x0, G.y0, G.w, G.h);
+      this.axisX(ctx, sx, G, pal, chLabel(s, this.xn));
+      this.axisY(ctx, sy, G, pal, chLabel(s, this.yn));
+    }
+    ctx.strokeStyle = pal.line; ctx.lineWidth = 1; ctx.strokeRect(G.x0 + .5, G.y0 + .5, G.w - 1, G.h - 1);
+    this.countEl.textContent = `${nf.format(shown)} events · ${popName(this.pop)}`;
+    this.drawOver();
+  }
+  tickLabel(ctx, t, x, y, align, pal){
+    ctx.fillStyle = pal.muted;
+    if (t.exp === undefined){ ctx.font = '11px ' + tok('--f-mono'); ctx.textAlign = align; ctx.fillText(t.label, x, y); return; }
+    const base = (t.neg ? '−' : '') + '10', ex = String(t.exp);
+    ctx.font = '11px ' + tok('--f-mono'); const wb = ctx.measureText(base).width;
+    ctx.font = '8.5px ' + tok('--f-mono'); const we = ctx.measureText(ex).width;
+    const total = wb + we + 1;
+    let sx = align === 'center' ? x - total / 2 : align === 'right' ? x - total : x;
+    ctx.textAlign = 'left';
+    ctx.font = '11px ' + tok('--f-mono'); ctx.fillText(base, sx, y);
+    ctx.font = '8.5px ' + tok('--f-mono'); ctx.fillText(ex, sx + wb + 1, y - 5);
+  }
+  axisX(ctx, sc, G, pal, label){
+    const ts = ticks(sc); let last = -1e9;
+    ctx.strokeStyle = pal.muted; ctx.lineWidth = 1; ctx.textBaseline = 'alphabetic';
+    for (const t of ts){
+      const x = Math.round(G.x0 + t.u * G.w) + .5;
+      ctx.beginPath(); ctx.moveTo(x, G.y0 + G.h); ctx.lineTo(x, G.y0 + G.h + (t.major ? 5 : 3)); ctx.stroke();
+      if (t.major && x - last > 30){ this.tickLabel(ctx, t, x, G.y0 + G.h + 18, 'center', pal); last = x; }
+    }
+    ctx.fillStyle = pal.ink; ctx.font = '500 12px ' + tok('--f-sans'); ctx.textAlign = 'center';
+    const t = label + '  ▾', tw = ctx.measureText(t).width;
+    ctx.fillText(t, G.x0 + G.w / 2, G.y0 + G.h + 38);
+    this.axisBoxes = this.axisBoxes || {};
+    this.axisBoxes.x = [G.x0 + G.w / 2 - tw / 2 - 6, G.y0 + G.h + 27, tw + 12, 17];
+  }
+  axisY(ctx, sc, G, pal, label){
+    const ts = ticks(sc); let last = 1e9;
+    ctx.strokeStyle = pal.muted; ctx.lineWidth = 1; ctx.textBaseline = 'middle';
+    for (const t of ts){
+      const y = Math.round(G.y0 + (1 - t.u) * G.h) + .5;
+      ctx.beginPath(); ctx.moveTo(G.x0, y); ctx.lineTo(G.x0 - (t.major ? 5 : 3), y); ctx.stroke();
+      if (t.major && last - y > 18){ this.tickLabel(ctx, t, G.x0 - 8, y + 1, 'right', pal); last = y; }
+    }
+    this.yTitle(ctx, label, G, pal);
+  }
+  axisYCount(ctx, ymax, G, pal){
+    const st = niceStep(ymax, 5);
+    ctx.strokeStyle = pal.muted; ctx.textBaseline = 'middle';
+    for (let v = 0; v <= ymax; v += st){
+      const y = Math.round(G.y0 + (1 - v / ymax) * G.h) + .5;
+      ctx.beginPath(); ctx.moveTo(G.x0, y); ctx.lineTo(G.x0 - 5, y); ctx.stroke();
+      this.tickLabel(ctx, {label: fmtSI(v)}, G.x0 - 8, y + 1, 'right', pal);
+    }
+    this.yTitle(ctx, 'Count', G, pal);
+  }
+  yTitle(ctx, label, G, pal){
+    ctx.save(); ctx.translate(14, G.y0 + G.h / 2); ctx.rotate(-Math.PI / 2);
+    ctx.fillStyle = pal.ink; ctx.font = '500 12px ' + tok('--f-sans'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const t = label + '  ▾', tw = ctx.measureText(t).width;
+    ctx.fillText(t, 0, 0); ctx.restore();
+    this.axisBoxes = this.axisBoxes || {};
+    this.axisBoxes.y = [5, G.y0 + G.h / 2 - tw / 2 - 6, 18, tw + 12];
+  }
+  /* gates in panel pixel space */
+  toPx(u, v){ const G = this.geom(); return [G.x0 + clamp(u, -0.02, 1.02) * G.w, G.y0 + (1 - clamp(v, -0.02, 1.02)) * G.h]; }
+  gatesHere(){
+    const par = this.pop === 'all' ? null : this.pop;
+    return state.gates.filter(g => (g.parent ?? null) === par && g.xch === this.xn &&
+      (g.type === 'range' ? this.isHist : (!this.isHist && g.ych === this.yn)));
+  }
+  gatePath(g, s){
+    const p = new Path2D(), G = this.geom();
+    if (g.type === 'range'){
+      const a = cu(this.sx.fwd(g.pts[0][0])), b = cu(this.sx.fwd(g.pts[1][0]));
+      const [xa] = this.toPx(Math.min(a, b), 0), [xb] = this.toPx(Math.max(a, b), 0);
+      p.rect(xa, G.y0, xb - xa, G.h);
+      return {p, box: [xa, G.y0, xb, G.y0 + G.h]};
+    }
+    const gx = makeScale(g.xs, chOf(s, g.xch)), gy = makeScale(g.ys, chOf(s, g.ych));
+    const same = g.xs === this.xs && g.ys === this.ys, steps = same ? 1 : 32, pts = [];
+    // gate-space u at or beyond the border means "everything past this edge", so it maps to the panel border
+    const map = (gs, ps, u) => same ? u : u <= 0 ? -0.02 : u >= 1 ? 1.02 : ps.fwd(gs.inv(u));
+    const n = g.pts.length;
+    for (let i = 0; i < n; i++){
+      const A = g.pts[i], B = g.pts[(i + 1) % n];
+      const au = cu(gx.fwd(A[0])), av = cu(gy.fwd(A[1])), bu = cu(gx.fwd(B[0])), bv = cu(gy.fwd(B[1]));
+      for (let k = 0; k < steps; k++){
+        const t = k / steps;
+        pts.push(this.toPx(map(gx, this.sx, au + (bu - au) * t), map(gy, this.sy, av + (bv - av) * t)));
+      }
+    }
+    pts.forEach(([x, y], i) => i ? p.lineTo(x, y) : p.moveTo(x, y)); p.closePath();
+    const xs = pts.map(q => q[0]), ys = pts.map(q => q[1]);
+    return {p, box: [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)]};
+  }
+  drawOver(){
+    if (!this.size) return;
+    const ctx = this.over.getContext('2d'); ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    ctx.clearRect(0, 0, this.size, this.size);
+    const s = cur(); this.paths = [];
+    if (!s || !this.sx) return;
+    const pal = palette(), G = this.geom();
+    ctx.save(); ctx.beginPath(); ctx.rect(G.x0 - 1, G.y0 - 1, G.w + 2, G.h + 2); ctx.clip();
+    this.drawCellCycleModel(ctx, G);
+    let rangeN = 0;
+    for (const g of this.gatesHere()){
+      const {p, box} = this.gatePath(g, s); this.paths.push({g, p});
+      const selected = state.sel === g.id, col = selected ? pal.sel : pal.gate;
+      ctx.lineWidth = selected ? 2.25 : 1.5; ctx.strokeStyle = col;
+      if (g.type === 'range' && selected){ ctx.globalAlpha = .1; ctx.fillStyle = col; ctx.fill(p); ctx.globalAlpha = 1; }
+      ctx.stroke(p);
+      const parentN = popCount(s, g.parent ?? 'all'), c = popCount(s, g.id);
+      const txt = `${g.name}  ${parentN ? (100 * c / parentN).toFixed(1) : '0.0'}%`;
+      ctx.font = '600 11.5px ' + tok('--f-sans');
+      const tw = ctx.measureText(txt).width + 10;
+      let lx = clamp(box[0], G.x0 + 2, G.x0 + G.w - tw - 2), ly = box[1] - 22;
+      if (ly < G.y0 + 2) ly = Math.min(box[3] + 4, G.y0 + G.h - 20);
+      if (g.type === 'range') ly = G.y0 + 6 + (rangeN++ % 3) * 21;
+      ctx.fillStyle = pal.surface; ctx.globalAlpha = .9; ctx.fillRect(lx, ly, tw, 18); ctx.globalAlpha = 1;
+      ctx.strokeStyle = col; ctx.lineWidth = 1; ctx.strokeRect(lx + .5, ly + .5, tw - 1, 17);
+      ctx.fillStyle = col; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(txt, lx + 5, ly + 9.5);
+    }
+    const selG = this.gatesHere().find(g => g.id === state.sel);
+    const drawHandles = () => { if (!selG || this.draft) return;
+      for (const h of this.handlesFor(selG)){
+        ctx.fillStyle = pal.surface; ctx.strokeStyle = pal.sel; ctx.lineWidth = 1.5;
+        if (h.kind === 'v'){ ctx.fillRect(h.x - 4.5, h.y - 4.5, 9, 9); ctx.strokeRect(h.x - 4.5, h.y - 4.5, 9, 9); }
+        else if (h.kind === 'e'){ ctx.beginPath(); ctx.arc(h.x, h.y, 4, 0, 7); ctx.fill(); ctx.stroke(); }
+        else { ctx.beginPath(); ctx.roundRect ? ctx.roundRect(h.x - 4, h.y - 12, 8, 24, 3) : ctx.rect(h.x - 4, h.y - 12, 8, 24); ctx.fill(); ctx.stroke(); }
+      }
+    };
+    const d = this.draft;
+    if (d){
+      ctx.strokeStyle = pal.sel; ctx.lineWidth = 1.5; ctx.setLineDash([5, 4]);
+      if (d.type === 'rect'){
+        const [ax, ay] = this.toPx(d.u0, d.v0), [bx, by] = this.toPx(d.u1, d.v1);
+        ctx.strokeRect(Math.min(ax, bx), Math.min(ay, by), Math.abs(bx - ax), Math.abs(by - ay));
+      } else if (d.type === 'range'){
+        const [ax] = this.toPx(d.u0, 0), [bx] = this.toPx(d.u1, 0);
+        ctx.strokeRect(Math.min(ax, bx), G.y0, Math.abs(bx - ax), G.h);
+      } else if (d.type === 'poly'){
+        ctx.beginPath();
+        d.pts.forEach(([u, v], i) => { const [x, y] = this.toPx(u, v); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+        if (d.hover){ const [x, y] = this.toPx(d.hover[0], d.hover[1]); ctx.lineTo(x, y); }
+        ctx.stroke(); ctx.setLineDash([]);
+        d.pts.forEach(([u, v], i) => { const [x, y] = this.toPx(u, v); ctx.fillStyle = i === 0 ? pal.sel : pal.surface; ctx.beginPath(); ctx.arc(x, y, i === 0 ? 4.5 : 3, 0, 7); ctx.fill(); ctx.strokeStyle = pal.sel; ctx.stroke(); });
+      }
+      ctx.setLineDash([]);
+    }
+    ctx.restore();
+    drawHandles();
+    const hb = this.hoverAxis && this.axisBoxes?.[this.hoverAxis];
+    if (hb){
+      ctx.fillStyle = pal.accent; ctx.globalAlpha = .12;
+      ctx.beginPath(); ctx.roundRect ? ctx.roundRect(hb[0], hb[1], hb[2], hb[3], 4) : ctx.rect(hb[0], hb[1], hb[2], hb[3]); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+  }
+  drawCellCycleModel(ctx, G){
+    const cc = state.cc, f = cc?.fit;
+    if (!f?.ok || !this.isHist || this.xn !== cc.ch || this.xs !== 'lin' || !this.hmax) return;
+    if (this.pop !== (cc.singId ?? cc.parent)) return;
+    const bwP = (this.sx.hi - this.sx.lo) / this.hNB, Y = v => G.y0 + G.h - v / this.hmax * G.h;
+    const sScale = f.nSraw > 0 ? f.S / f.nSraw : 0, STEPS = 360;
+    const comp = (x) => {
+      const g1 = f.G1 * bwP * gaussPdf(x, f.mu1, f.sd1), g2 = f.G2 * bwP * gaussPdf(x, f.mu2, f.sd2);
+      const k = x / f.bw - 0.5, i = Math.floor(k), t = k - i;
+      const sv = i >= 0 && i + 1 < f.sCurve.length ? (f.sCurve[i] * (1 - t) + f.sCurve[i + 1] * t) : 0;
+      return [g1, sv / f.bw * bwP * sScale, g2];
+    };
+    const xs = [], vals = [];
+    for (let k = 0; k <= STEPS; k++){ const u = k / STEPS, x = this.sx.inv(u); xs.push(G.x0 + u * G.w); vals.push(comp(x)); }
+    const cols = [tok('--cc-g1'), tok('--cc-s'), tok('--cc-g2')];
+    for (let c = 0; c < 3; c++){
+      ctx.beginPath(); ctx.moveTo(xs[0], Y(0));
+      vals.forEach((v, k) => ctx.lineTo(xs[k], Y(v[c]))); ctx.lineTo(xs[xs.length - 1], Y(0)); ctx.closePath();
+      ctx.globalAlpha = 0.32; ctx.fillStyle = cols[c]; ctx.fill(); ctx.globalAlpha = 1;
+      ctx.lineWidth = 1.5; ctx.strokeStyle = cols[c]; ctx.stroke();
+    }
+    ctx.beginPath(); vals.forEach((v, k) => { const y = Y(v[0] + v[1] + v[2]); k ? ctx.lineTo(xs[k], y) : ctx.moveTo(xs[k], y); });
+    ctx.setLineDash([4, 3]); ctx.strokeStyle = tok('--ink'); ctx.lineWidth = 1.25; ctx.stroke(); ctx.setLineDash([]);
+    ctx.font = '600 11px ' + tok('--f-sans'); ctx.textAlign = 'right'; ctx.textBaseline = 'top';
+    [['G0/G1', 0], ['S', 1], ['G2/M', 2], ['Model total', -1]].forEach(([t, c], k) => {
+      ctx.fillStyle = c < 0 ? tok('--muted') : cols[c]; ctx.fillText(t, G.x0 + G.w - 8, G.y0 + 70 + k * 15);
+    });
+  }
+  /* pointer handling */
+  evtPos(e){
+    const r = this.over.getBoundingClientRect(), G = this.geom();
+    const mx = e.clientX - r.left, my = e.clientY - r.top;
+    return {mx, my, u: clamp((mx - G.x0) / G.w, -0.02, 1.02), v: clamp(1 - (my - G.y0) / G.h, -0.02, 1.02)};
+  }
+  // corner / side / end handles, in panel pixels
+  handlesFor(g){
+    const G0 = this.geom(), inX = x => clamp(x, G0.x0, G0.x0 + G0.w), inY = y => clamp(y, G0.y0, G0.y0 + G0.h);
+    return this.rawHandles(g).map(h => ({...h, x: inX(h.x), y: inY(h.y)}));
+  }
+  rawHandles(g){
+    const out = [];
+    if (g.type === 'range'){
+      const G = this.geom();
+      g.pts.forEach((p, i) => { const [x] = this.toPx(cu(this.sx.fwd(p[0])), 0); out.push({kind: 'r', i, x, y: G.y0 + G.h / 2}); });
+      return out;
+    }
+    const P = g.pts.map(p => this.toPx(cu(this.sx.fwd(p[0])), cu(this.sy.fwd(p[1]))));
+    P.forEach(([x, y], i) => out.push({kind: 'v', i, x, y}));
+    if (g.shape === 'rect') for (let k = 0; k < 4; k++){ const a = P[k], b = P[(k + 1) % 4]; out.push({kind: 'e', i: k, x: (a[0] + b[0]) / 2, y: (a[1] + b[1]) / 2}); }
+    return out;
+  }
+  hitHandle(mx, my, r){
+    const gs = this.gatesHere().sort((a, b) => (b.id === state.sel) - (a.id === state.sel));
+    for (const g of gs){
+      let best = null, bd = r;
+      for (const h of this.handlesFor(g)){
+        const d = h.kind === 'r' ? Math.abs(h.x - mx) : Math.hypot(h.x - mx, h.y - my);
+        if (d <= bd && (h.kind !== 'r' || (my >= this.geom().y0 && my <= this.geom().y0 + this.geom().h))){ bd = d; best = h; }
+      }
+      if (best) return {g, h: best};
+    }
+    return null;
+  }
+  handleCursor(h){ return h.kind === 'r' ? 'ew-resize' : h.kind === 'e' ? (h.i % 2 ? 'ew-resize' : 'ns-resize') : 'grab'; }
+  applyHandle(g, h, u, v){
+    const x = edgeInv(this.sx, u), y = this.sy ? edgeInv(this.sy, v) : 0;
+    if (h.kind === 'r'){ g.pts[h.i] = [x]; return; }
+    if (g.shape === 'rect'){
+      if (h.kind === 'v'){
+        // a corner shares its x with one neighbour and its y with the other, so the shape stays rectangular
+        const i = h.i, xp = i % 2 ? (i + 1) % 4 : (i + 3) % 4, yp = i % 2 ? (i + 3) % 4 : (i + 1) % 4;
+        g.pts[i] = [x, y]; g.pts[xp] = [x, g.pts[xp][1]]; g.pts[yp] = [g.pts[yp][0], y];
+      } else {
+        const k = h.i, k2 = (k + 1) % 4;
+        if (k % 2 === 0){ g.pts[k] = [g.pts[k][0], y]; g.pts[k2] = [g.pts[k2][0], y]; }
+        else { g.pts[k] = [x, g.pts[k][1]]; g.pts[k2] = [x, g.pts[k2][1]]; }
+      }
+      return;
+    }
+    g.pts[h.i] = [x, y];
+  }
+  hitGate(mx, my){
+    for (let i = this.paths.length - 1; i >= 0; i--){
+      const {g, p} = this.paths[i];
+      if (this.hit.isPointInPath(p, mx, my)) return g;
+      this.hit.lineWidth = 8; if (this.hit.isPointInStroke(p, mx, my)) return g;
+    }
+    return null;
+  }
+  onDown(e){
+    const s = cur(); if (!s || !this.sx) return;
+    if (e.button !== 0) return;
+    this.over.focus({preventScroll: true, focusVisible: false});
+    const P = this.evtPos(e);
+    if (this.tool === 'select' && !this.draft){
+      const ax = this.axisAt(P.mx, P.my);
+      if (ax){ e.preventDefault(); openAxisMenu(this, ax, e.clientX, e.clientY); return; }
+    }
+    if (this.tool === 'select'){
+      const hh = this.hitHandle(P.mx, P.my, e.pointerType === 'touch' ? 16 : 8);
+      if (hh){
+        selectGate(hh.g.id);
+        this.drag = {mode: 'handle', g: hh.g, h: hh.h, orig: hh.g.pts.map(p => p.slice()), moved: false};
+        this.over.setPointerCapture(e.pointerId); this.over.style.cursor = hh.h.kind === 'v' ? 'grabbing' : this.handleCursor(hh.h);
+        return;
+      }
+      const g = this.hitGate(P.mx, P.my);
+      selectGate(g ? g.id : null);
+      if (g){ this.drag = {mode: 'move', g, u0: P.u, v0: P.v, orig: g.pts.map(p => p.slice()), moved: false}; this.over.setPointerCapture(e.pointerId); }
+      return;
+    }
+    if (this.tool === 'rect' || this.tool === 'range'){
+      this.draft = {type: this.tool, u0: P.u, v0: P.v, u1: P.u, v1: P.v};
+      this.over.setPointerCapture(e.pointerId); this.drawOver(); return;
+    }
+    if (this.tool === 'poly'){
+      if (!this.draft) this.draft = {type: 'poly', pts: []};
+      const d = this.draft;
+      if (d.pts.length >= 3){
+        const [fx, fy] = this.toPx(d.pts[0][0], d.pts[0][1]);
+        if (Math.hypot(fx - P.mx, fy - P.my) < 10){ this.finishPoly(); return; }
+      }
+      d.pts.push([P.u, P.v]); this.drawOver();
+    }
+  }
+  onMove(e){
+    const s = cur(); if (!s || !this.sx) return;
+    const P = this.evtPos(e);
+    const G = this.geom();
+    if (P.mx >= G.x0 && P.mx <= G.x0 + G.w && P.my >= G.y0 && P.my <= G.y0 + G.h){
+      const xv = fmtSI(this.sx.inv(P.u));
+      const xl = (s.compChs?.has(this.xn) ? 'Comp-' : '') + this.xn, yl = (s.compChs?.has(this.yn) ? 'Comp-' : '') + this.yn;
+      this.readEl.textContent = this.isHist ? `${xl} ${xv}` : `${xl} ${xv} · ${yl} ${fmtSI(this.sy.inv(P.v))}`;
+    } else this.readEl.textContent = '';
+    if (this.drag && this.drag.mode === 'handle'){
+      this.drag.moved = true;
+      this.applyHandle(this.drag.g, this.drag.h, P.u, P.v);
+      liveRefresh(); return;
+    }
+    if (!this.drag && !this.draft){
+      const ax = this.axisAt(P.mx, P.my);
+      if (ax !== (this.hoverAxis || null)){ this.hoverAxis = ax; this.drawOver(); }
+      this.over.title = ax ? `Right-click${this.tool === 'select' ? ' or click' : ''} to change the ${ax.toUpperCase()} axis channel` : '';
+      if (ax){ this.over.style.cursor = 'context-menu'; }
+      else if (this.tool === 'select'){
+        const hh = this.hitHandle(P.mx, P.my, e.pointerType === 'touch' ? 16 : 8);
+        this.over.style.cursor = hh ? this.handleCursor(hh.h) : (this.hitGate(P.mx, P.my) ? 'move' : '');
+      } else this.over.style.cursor = '';
+    }
+    if (this.drag){
+      const du = P.u - this.drag.u0, dv = P.v - this.drag.v0, g = this.drag.g;
+      if (Math.abs(du) + Math.abs(dv) > 0.002) this.drag.moved = true;
+      const mv = (sc, v, d) => Math.abs(v) >= EDGE ? v : sc.inv(sc.fwd(v) + d);
+      if (g.type === 'range') g.pts = this.drag.orig.map(p => [mv(this.sx, p[0], du)]);
+      else g.pts = this.drag.orig.map(p => [mv(this.sx, p[0], du), mv(this.sy, p[1], dv)]);
+      liveRefresh(); return;
+    }
+    const d = this.draft; if (!d) return;
+    if (d.type === 'rect' || d.type === 'range'){ d.u1 = P.u; d.v1 = P.v; this.drawOver(); }
+    else if (d.type === 'poly'){ d.hover = [P.u, P.v]; this.drawOver(); }
+  }
+  onUp(e){
+    if (this.drag){ const moved = this.drag.moved; this.drag = null; this.over.style.cursor = ''; if (moved) refresh(); return; }
+    const d = this.draft; if (!d || d.type === 'poly') return;
+    const G = this.geom();
+    if (d.type === 'rect'){
+      if (Math.abs(d.u1 - d.u0) * G.w < 4 || Math.abs(d.v1 - d.v0) * G.h < 4){ this.draft = null; this.drawOver(); return; }
+      const ua = Math.min(d.u0, d.u1), ub = Math.max(d.u0, d.u1), va = Math.min(d.v0, d.v1), vb = Math.max(d.v0, d.v1);
+      const X = u => edgeInv(this.sx, u), Y = v => edgeInv(this.sy, v);
+      this.addGate('poly', [[X(ua), Y(va)], [X(ub), Y(va)], [X(ub), Y(vb)], [X(ua), Y(vb)]], 'rect');
+    } else {
+      if (Math.abs(d.u1 - d.u0) * G.w < 4){ this.draft = null; this.drawOver(); return; }
+      this.addGate('range', [[edgeInv(this.sx, Math.min(d.u0, d.u1))], [edgeInv(this.sx, Math.max(d.u0, d.u1))]]);
+    }
+  }
+  onDbl(e){
+    if (this.tool === 'select'){ this.editCorners(e); return; }
+    const d = this.draft; if (!d || d.type !== 'poly') return;
+    // the two clicks of a double-click each added a point; drop the duplicate
+    if (d.pts.length >= 2){ const a = d.pts[d.pts.length - 1], b = d.pts[d.pts.length - 2]; if (Math.hypot(a[0]-b[0], a[1]-b[1]) < 0.01) d.pts.pop(); }
+    this.finishPoly();
+  }
+  editCorners(e){
+    const s = cur(); if (!s || !this.sx || this.isHist) return;
+    const P = this.evtPos(e);
+    const g = this.gatesHere().find(x => x.id === state.sel); if (!g || g.type !== 'poly' || g.shape === 'rect') return;
+    const H = this.handlesFor(g).filter(h => h.kind === 'v');
+    const hit = H.find(h => Math.hypot(h.x - P.mx, h.y - P.my) <= 9);
+    if (hit){
+      if (g.pts.length > 3){ g.pts.splice(hit.i, 1); refresh(); }
+      else showMsg('A polygon needs at least three corners. Delete the gate instead if you want to remove it.', false);
+      return;
+    }
+    // nearest edge within 7px gets a new corner
+    let best = -1, bd = 7;
+    for (let i = 0; i < H.length; i++){
+      const a = H[i], b = H[(i + 1) % H.length], dx = b.x - a.x, dy = b.y - a.y, L = dx * dx + dy * dy || 1;
+      const t = clamp(((P.mx - a.x) * dx + (P.my - a.y) * dy) / L, 0, 1);
+      const d = Math.hypot(a.x + t * dx - P.mx, a.y + t * dy - P.my);
+      if (d < bd){ bd = d; best = i; }
+    }
+    if (best >= 0){ g.pts.splice(best + 1, 0, [edgeInv(this.sx, P.u), edgeInv(this.sy, P.v)]); refresh(); }
+  }
+  finishPoly(){
+    const d = this.draft; if (!d || d.pts.length < 3){ return; }
+    this.addGate('poly', d.pts.map(([u, v]) => [edgeInv(this.sx, u), edgeInv(this.sy, v)]));
+  }
+  addGate(type, pts, shape){
+    const g = {id: state.nextId++, name: `P${state.nextId - 1}`, parent: this.pop === 'all' ? null : this.pop, type, shape: shape || type,
+      xch: this.xn, ych: type === 'range' ? null : this.yn, xs: this.xs, ys: type === 'range' ? null : this.ys, pts};
+    state.gates.push(g); this.draft = null; state.sel = g.id;
+    // follow the gating flow: the other plot moves into the new population if it was showing the parent
+    const next = panels[panels.indexOf(this) + 1];
+    if (next && next.pop === (g.parent ?? 'all')) next.pop = g.id;
+    this.setTool('select');
+    refresh();
+  }
+}
+
+/* ---------------- Axis menu ---------------- */
+const axisMenu = document.createElement('div');
+axisMenu.className = 'axismenu'; axisMenu.setAttribute('role', 'menu'); axisMenu.hidden = true;
+document.body.appendChild(axisMenu);
+let menuCtx = null;
+function openAxisMenu(panel, axis, cx, cy){
+  const s = cur(); if (!s) return;
+  const isY = axis === 'y', hist = panel.isHist;
+  const curCh = isY ? (hist ? null : panel.yn) : panel.xn;
+  const item = (v, label, on) => `<button type="button" role="menuitemradio" aria-checked="${on}" data-v="${esc(v)}">${esc(label)}</button>`;
+  let html = `<div class="mhead">Plot ${panel.key} · ${isY ? 'Y' : 'X'} axis</div>`;
+  if (isY && hist) html += item('count', 'Count (histogram)', true) + `<div class="mnote">Pick a channel to switch to a dot plot</div>`;
+  html += s.ch.map(c => item('ch:' + c.name, chLabel(s, c.name), c.name === curCh)).join('');
+  if (!(isY && hist)){
+    const sc = isY ? panel.ys : panel.xs;
+    html += `<div class="msep" role="separator"></div><div class="mhead">Scale</div>` +
+      [['lin', 'Linear'], ['log', 'Log'], ['asinh', 'Biexponential']].map(([v, l]) => item('sc:' + v, l, sc === v)).join('');
+  }
+  axisMenu.innerHTML = html;
+  axisMenu.setAttribute('aria-label', `Plot ${panel.key} ${isY ? 'Y' : 'X'} axis`);
+  menuCtx = {panel, axis};
+  axisMenu.hidden = false;
+  const w = axisMenu.offsetWidth, h = axisMenu.offsetHeight;
+  axisMenu.style.left = Math.max(8, Math.min(cx, innerWidth - w - 8)) + 'px';
+  axisMenu.style.top = (cy + h > innerHeight - 8 ? Math.max(8, cy - h) : cy) + 'px';
+  (axisMenu.querySelector('[aria-checked="true"]') || axisMenu.querySelector('button'))?.focus({preventScroll: false});
+}
+function closeAxisMenu(){ if (axisMenu.hidden) return; axisMenu.hidden = true; menuCtx?.panel.over.focus({preventScroll: true, focusVisible: false}); menuCtx = null; }
+axisMenu.addEventListener('click', e => {
+  const b = e.target.closest('button[data-v]'); if (!b || !menuCtx) return;
+  const {panel, axis} = menuCtx, v = b.dataset.v;
+  closeAxisMenu();
+  if (v.startsWith('ch:')) panel.setChannel(axis, v.slice(3));
+  else if (v.startsWith('sc:')) panel.setScale(axis, v.slice(3));
+});
+axisMenu.addEventListener('keydown', e => {
+  const items = [...axisMenu.querySelectorAll('button')], i = items.indexOf(document.activeElement);
+  if (e.key === 'ArrowDown'){ e.preventDefault(); items[(i + 1) % items.length].focus(); }
+  else if (e.key === 'ArrowUp'){ e.preventDefault(); items[(i - 1 + items.length) % items.length].focus(); }
+  else if (e.key === 'Home'){ e.preventDefault(); items[0].focus(); }
+  else if (e.key === 'End'){ e.preventDefault(); items[items.length - 1].focus(); }
+  else if (e.key === 'Escape' || e.key === 'Tab'){ e.preventDefault(); e.stopPropagation(); closeAxisMenu(); }
+});
+document.addEventListener('pointerdown', e => { if (!axisMenu.hidden && !axisMenu.contains(e.target)) closeAxisMenu(); }, true);
+window.addEventListener('resize', closeAxisMenu);
+window.addEventListener('scroll', e => { if (!axisMenu.contains(e.target)) closeAxisMenu(); }, true);
+
+/* ---------------- Undo / redo ---------------- */
+const HIST_MAX = 100;
+const clone = o => JSON.parse(JSON.stringify(o));
+function snapshot(){
+  const C = state.comp, cc = state.cc;
+  return {
+    gates: clone(state.gates), nextId: state.nextId,
+    comp: {on: C.on, chs: C.chs.slice(), S: {...C.S}, ctrl: {...C.ctrl}, unst: C.unst, pop: C.pop},
+    cc: cc ? {ch: cc.ch, hch: cc.hch, parent: cc.parent, singId: cc.singId, wedge: cc.wedge ? clone(cc.wedge) : null} : null,
+    panels: panels.map(p => ({key: p.key, defs: p.defs, pop: p.pop, xn: p.xn, yn: p.yn, y2: p.y2 ?? null, xs: p.xs, ys: p.ys, role: p.role ?? null})),
+  };
+}
+// samples are compared by name; everything else by value
+const snapSig = snap => JSON.stringify(snap, (k, v) => v && typeof v === 'object' && v.raw && v.idx ? '#' + v.name : (k === 'defs' ? undefined : v));
+function resetHistory(){ hist.undo = []; hist.redo = []; hist.cur = snapshot(); hist.sig = snapSig(hist.cur); syncHistButtons(); }
+function markChange(){
+  if (hist.busy || !hist.cur) return;
+  const snap = snapshot(), sig = snapSig(snap);
+  if (sig === hist.sig) return;
+  hist.undo.push({snap: hist.cur, sig: hist.sig, label: describeChange(hist.cur, snap)});
+  if (hist.undo.length > HIST_MAX) hist.undo.shift();
+  hist.redo = []; hist.cur = snap; hist.sig = sig;
+  syncHistButtons();
+}
+function describeChange(a, b){
+  const same = (x, y) => snapSig(x) === snapSig(y);
+  if (!same(a.cc, b.cc)) return 'cell-cycle auto-gating';
+  if (b.gates.length > a.gates.length){ const n = b.gates.filter(g => !a.gates.some(h => h.id === g.id)); return n.length === 1 ? `add gate ${n[0].name}` : 'add gates'; }
+  if (b.gates.length < a.gates.length){ const n = a.gates.filter(g => !b.gates.some(h => h.id === g.id)); return n.length === 1 ? `delete gate ${n[0].name}` : `delete gate ${n[0].name} and the gates inside it`; }
+  for (const g of b.gates){
+    const o = a.gates.find(h => h.id === g.id); if (!o) continue;
+    if (o.name !== g.name) return `rename gate ${o.name} to ${g.name}`;
+    if (JSON.stringify(o.pts) !== JSON.stringify(g.pts)) return `${o.pts.length === g.pts.length ? 'move or resize' : 'edit corners of'} gate ${g.name}`;
+  }
+  if (!same(a.comp, b.comp)){
+    if (a.comp.on !== b.comp.on && same(a.comp.S, b.comp.S)) return `turn compensation ${b.comp.on ? 'on' : 'off'}`;
+    if (!same(a.comp.S, b.comp.S)) return 'change the spillover matrix';
+    return 'change compensation settings';
+  }
+  if (b.panels.length > a.panels.length) return `add plot ${b.panels.find(p => !a.panels.some(q => q.key === p.key))?.key || ''}`.trim();
+  if (b.panels.length < a.panels.length) return `remove plot ${a.panels.find(p => !b.panels.some(q => q.key === p.key))?.key || ''}`.trim();
+  const ch = b.panels.find(p => { const o = a.panels.find(q => q.key === p.key); return o && !same(o, p); });
+  return ch ? `change plot ${ch.key}` : 'change';
+}
+function restoreSnapshot(snap){
+  hist.busy++;
+  try {
+    state.gates = clone(snap.gates); state.nextId = snap.nextId;
+    const C = state.comp, live = x => x && state.samples.includes(x) ? x : null;
+    C.on = snap.comp.on; C.chs = snap.comp.chs.slice(); C.S = {...snap.comp.S}; C.pop = snap.comp.pop; C.unst = live(snap.comp.unst);
+    C.ctrl = {}; for (const [k, x] of Object.entries(snap.comp.ctrl)) if (live(x)) C.ctrl[k] = x;
+    state.cc = snap.cc ? {...clone(snap.cc), fit: null} : null;
+    // plots: remove extras, re-add missing ones under the same letter, then restore their settings
+    for (const p of [...panels]) if (!snap.panels.some(q => q.key === p.key)) removePanel(p, true);
+    for (const q of snap.panels){
+      let p = panels.find(x => x.key === q.key);
+      if (!p) p = addPanel({key: q.key, defs: q.defs, pop: q.pop});
+      if (!p) continue;
+      Object.assign(p, {pop: q.pop, xn: q.xn, yn: q.yn, y2: q.y2, xs: q.xs, ys: q.ys, role: q.role, draft: null, drag: null});
+      p.fillChannels(); p.setTool('select');
+    }
+    if (state.sel != null && !gateById(state.sel)) state.sel = null;
+    renderComp(); fillCellCycleSetup(); refresh();
+  } finally { hist.busy--; }
+}
+function undo(){
+  if (!hist.undo.length) return;
+  panels.forEach(p => { p.draft = null; p.drag = null; });
+  const e = hist.undo.pop();
+  hist.redo.push({snap: hist.cur, sig: hist.sig, label: e.label});
+  hist.cur = e.snap; hist.sig = e.sig;
+  restoreSnapshot(e.snap); syncHistButtons(); histNote(`Undone: ${e.label}`);
+}
+function redo(){
+  if (!hist.redo.length) return;
+  panels.forEach(p => { p.draft = null; p.drag = null; });
+  const e = hist.redo.pop();
+  hist.undo.push({snap: hist.cur, sig: hist.sig, label: e.label});
+  hist.cur = e.snap; hist.sig = e.sig;
+  restoreSnapshot(e.snap); syncHistButtons(); histNote(`Redone: ${e.label}`);
+}
+const cap = t => t.charAt(0).toUpperCase() + t.slice(1);
+function syncHistButtons(){
+  const u = $('#undoBtn'), r = $('#redoBtn'), lu = hist.undo.at(-1)?.label, lr = hist.redo.at(-1)?.label;
+  u.disabled = !lu; r.disabled = !lr;
+  u.title = lu ? `Undo: ${lu} (Ctrl+Z)` : 'Nothing to undo (Ctrl+Z)';
+  r.title = lr ? `Redo: ${lr} (Ctrl+Shift+Z)` : 'Nothing to redo (Ctrl+Shift+Z)';
+  u.setAttribute('aria-label', lu ? `Undo ${lu}` : 'Undo'); r.setAttribute('aria-label', lr ? `Redo ${lr}` : 'Redo');
+}
+let histTimer;
+function histNote(t){ const n = $('#histNote'); n.textContent = cap(t); n.classList.add('show'); clearTimeout(histTimer); histTimer = setTimeout(() => n.classList.remove('show'), 2600); }
+$('#undoBtn').addEventListener('click', undo);
+$('#redoBtn').addEventListener('click', redo);
+
+/* ---------------- Page rendering ---------------- */
+let panels = [];
+function drawAllOverlays(){ panels.forEach(p => p.drawOver()); }
+let liveRaf = 0;
+function liveRefresh(){
+  if (liveRaf) return;
+  liveRaf = requestAnimationFrame(() => {
+    liveRaf = 0; const s = cur(); if (!s) return;
+    if (s.n * Math.max(1, state.gates.length) <= 3e6){ computeMasks(s); panels.forEach(p => p.draw()); }
+    else drawAllOverlays();
+  });
+}
+function selectGate(id){ state.sel = id; drawAllOverlays(); renderTable(); }
+function refresh(){
+  const s0 = cur();
+  if (s0) compStatus(applyComp(s0));
+  computeMasks(s0);
+  fillCompPop();
+  if (s0) updateCellCycle();
+  panels.forEach(p => { p.fillPops(); p.draw(); });
+  renderTable();
+  renderCellCycle();
+  markChange();
+}
+function setCurrent(i){
+  hist.busy++;
+  try { setCurrentInner(i); } finally { hist.busy--; }
+  if (hist.cur){ hist.cur = snapshot(); hist.sig = snapSig(hist.cur); }
+}
+function setCurrentInner(i){
+  state.cur = i; const s = cur();
+  if (s){ compStatus(applyComp(s)); computeMasks(s); }
+  $('#sampleSel').innerHTML = state.samples.map((x, k) => `<option value="${k}">${esc(x.name)}</option>`).join('');
+  $('#sampleSel').value = String(i);
+  $('#prevSample').disabled = $('#nextSample').disabled = state.samples.length < 2;
+  $('#exampleTag').hidden = !s?.example;
+  if (s){
+    if (!state.comp.chs.length) state.comp.chs = candidates(s);
+    const meta = [['Cytometer', s.kw['$CYT'] || '—'], ['Acquired', s.kw['$DATE'] || '—'], ['Events', nf.format(s.n)], ['Channels', s.ch.length], ['Format', s.ver]];
+    $('#meta').innerHTML = meta.map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('');
+    const stat = $('#statSel');
+    stat.innerHTML = s.ch.map(c => `<option value="${esc(c.name)}">${esc(c.label)}</option>`).join('');
+    if (!(state.statCh in s.idx)) state.statCh = s.ch.find(c => /^FL1|FITC|^FL/i.test(c.name))?.name || s.ch[0].name;
+    stat.value = state.statCh;
+    const keys = Object.keys(s.kw).sort();
+    $('#kwCount').textContent = `(${keys.length})`;
+    $('#kwTable').innerHTML = '<tbody>' + keys.map(k => `<tr><td>${esc(k)}</td><td>${esc(s.kw[k])}</td></tr>`).join('') + '</tbody>';
+  }
+  panels.forEach(p => { p.draft = null; p.fillChannels(); });
+  renderComp();
+  fillCellCycleSetup();
+  refresh();
+}
+
+function statsFor(s, mask, X){
+  let c = 0; for (let i = 0; i < s.n; i++) c += mask[i];
+  if (!c || !X) return {c, med: NaN, mean: NaN, cv: NaN};
+  const v = new Float32Array(c); let k = 0, sum = 0;
+  for (let i = 0; i < s.n; i++) if (mask[i]){ v[k++] = X[i]; sum += X[i]; }
+  v.sort(); const mean = sum / c;
+  let ss = 0; for (let i = 0; i < c; i++) ss += (v[i] - mean) ** 2;
+  const sd = c > 1 ? Math.sqrt(ss / (c - 1)) : 0;
+  const med = c % 2 ? v[(c - 1) / 2] : (v[c/2 - 1] + v[c/2]) / 2;
+  return {c, med, mean, cv: mean ? 100 * sd / Math.abs(mean) : NaN};
+}
+function popRows(){
+  const s = cur(); if (!s) return [];
+  const X = s.cols[s.idx[state.statCh]];
+  const rows = [{id: 'all', name: 'All events', depth: 0, parent: null, ...statsFor(s, rootMask(s), X)}];
+  for (const {g, depth} of treeOrder()) rows.push({id: g.id, name: g.name, depth, parent: g.parent ?? 'all', ...statsFor(s, popMask(s, g.id), X)});
+  return rows;
+}
+const fmtN = (v, d) => Number.isFinite(v) ? v.toLocaleString('en-GB', {maximumFractionDigits: d, minimumFractionDigits: d}) : '—';
+function renderTable(){
+  const s = cur(), t = $('#popTable'); if (!s){ t.innerHTML = ''; return; }
+  const rows = popRows(), ch = esc(state.statCh), total = s.n;
+  const cnt = id => rows.find(r => r.id === id)?.c || 0;
+  t.innerHTML = `<thead><tr><th>Population</th><th>Events</th><th>% of parent</th><th>% of total</th><th>Median ${ch}</th><th>Mean ${ch}</th><th>CV</th><th><span hidden>Actions</span></th></tr></thead><tbody>` +
+    rows.map(r => {
+      const pc = r.parent == null ? NaN : (cnt(r.parent) ? 100 * r.c / cnt(r.parent) : 0);
+      const name = r.id === 'all' ? `<span class="rootname">All events</span>`
+        : `<span class="tree">${'│ '.repeat(Math.max(0, r.depth - 1))}└</span><input type="text" class="gname" id="gname-${r.id}" data-id="${r.id}" value="${esc(r.name)}" aria-label="Name of gate ${esc(r.name)}">`;
+      return `<tr data-id="${r.id}" class="${state.sel === r.id ? 'sel' : ''}"><td><div class="pcell">${name}</div></td><td>${nf.format(r.c)}</td><td>${r.parent == null ? '—' : fmtN(pc, 1) + '%'}</td><td>${fmtN(total ? 100 * r.c / total : 0, 1)}%</td><td>${fmtN(r.med, 0)}</td><td>${fmtN(r.mean, 0)}</td><td>${Number.isFinite(r.cv) ? fmtN(r.cv, 1) + '%' : '—'}</td><td>${r.id === 'all' ? '' : `<button type="button" class="del" data-del="${r.id}">Delete</button>`}</td></tr>`;
+    }).join('') + '</tbody>';
+}
+function deleteGate(id){
+  const kill = new Set([id]); let grew = true;
+  while (grew){ grew = false; for (const g of state.gates) if (!kill.has(g.id) && kill.has(g.parent)){ kill.add(g.id); grew = true; } }
+  state.gates = state.gates.filter(g => !kill.has(g.id));
+  panels.forEach(p => { if (kill.has(p.pop)) p.pop = 'all'; });
+  if (kill.has(state.sel)) state.sel = null;
+  refresh();
+}
+
+/* ---------------- Compensation ---------------- */
+function candidates(s){
+  const fl = s.ch.filter(c => !c.isScatter && !c.isTime && !/width/i.test(c.name));
+  const area = fl.filter(c => !/-[HW]$/i.test(c.name));
+  return (area.length ? area : fl).map(c => c.name);
+}
+const sp = (a, b) => a === b ? 1 : (state.comp.S[a + '|' + b] || 0);
+function invert(A){
+  const n = A.length, M = A.map((r, i) => [...r, ...A.map((_, j) => i === j ? 1 : 0)]);
+  for (let c = 0; c < n; c++){
+    let piv = c; for (let r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[piv][c])) piv = r;
+    if (Math.abs(M[piv][c]) < 1e-9) return null;
+    [M[c], M[piv]] = [M[piv], M[c]];
+    const d = M[c][c]; for (let k = 0; k < 2 * n; k++) M[c][k] /= d;
+    for (let r = 0; r < n; r++) if (r !== c){ const f = M[r][c]; if (f) for (let k = 0; k < 2 * n; k++) M[r][k] -= f * M[c][k]; }
+  }
+  return M.map(r => r.slice(n));
+}
+function compKey(){
+  const C = state.comp;
+  return C.on ? JSON.stringify([C.chs, C.chs.map(a => C.chs.map(b => sp(a, b)))]) : 'off';
+}
+// observed = true × S  (rows = dye, columns = detector), so true = observed × S⁻¹
+function applyComp(s){
+  const key = compKey(); if (s.compKey === key) return s.compOk !== false;
+  s.cols = s.raw.slice(); s.ucache = new Map(); s.compChs = new Set();
+  let ok = true;
+  if (state.comp.on){
+    const names = state.comp.chs.filter(n => n in s.idx);
+    if (names.length >= 2){
+      const Mi = invert(names.map(a => names.map(b => sp(a, b))));
+      if (!Mi) ok = false;
+      else {
+        const ci = names.map(n => s.idx[n]), k = ci.length, src = ci.map(i => s.raw[i]), out = ci.map(() => new Float32Array(s.n)), o = new Float64Array(k);
+        for (let e = 0; e < s.n; e++){
+          for (let a = 0; a < k; a++) o[a] = src[a][e];
+          for (let j = 0; j < k; j++){ let t = 0; for (let i = 0; i < k; i++) t += o[i] * Mi[i][j]; out[j][e] = t; }
+        }
+        ci.forEach((p, j) => { s.cols[p] = out[j]; s.compChs.add(s.ch[p].name); });
+      }
+    }
+  }
+  s.ch.forEach((c, p) => chStats(c, s.cols[p], s.n));
+  s.compKey = key; s.compOk = ok; return ok;
+}
+function compStatus(ok){
+  const el = $('#compStatus'), s = cur(), C = state.comp;
+  if (!C.on){ el.textContent = 'Off'; el.dataset.state = 'off'; return; }
+  if (!ok){ el.textContent = 'Matrix cannot be inverted · showing raw data'; el.dataset.state = 'bad'; return; }
+  const k = s?.compChs?.size || 0;
+  if (k < 2){ el.textContent = 'On · needs 2+ channels'; el.dataset.state = 'bad'; return; }
+  el.textContent = `On · ${k} channels`; el.dataset.state = 'on';
+}
+const pct = (a, q) => { const b = Float64Array.from(a).sort(); return b.length ? b[Math.min(b.length - 1, Math.floor(q * (b.length - 1)))] : NaN; };
+const escRe = t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const fmtPct = f => (+(f * 100).toFixed(2)).toString();
+const tint = f => { const a = Math.min(1, Math.abs(f) * 4); return a > 0.002 ? `background:color-mix(in srgb, var(--accent) ${Math.round(a * 40)}%, transparent)` : ''; };
+
+function renderComp(){
+  const s = cur(), C = state.comp; if (!s) return;
+  const cands = candidates(s); C.chs.forEach(n => { if (n in s.idx && !cands.includes(n)) cands.push(n); });
+  $('#compChs').innerHTML = cands.map((n, i) => `<label class="chk" for="cc-${i}"><input type="checkbox" id="cc-${i}" value="${esc(n)}" ${C.chs.includes(n) ? 'checked' : ''}>${esc(chOf(s, n).label)}</label>`).join('');
+  const names = C.chs.filter(n => n in s.idx), t = $('#spillTable');
+  if (names.length < 2) t.innerHTML = `<tbody><tr><td class="empty">Choose at least two channels to compensate.</td></tr></tbody>`;
+  else t.innerHTML = `<thead><tr><th>Spill from ↓ into →</th>${names.map(n => `<th>${esc(n)}</th>`).join('')}</tr></thead><tbody>` +
+    names.map((a, i) => `<tr><th scope="row">${esc(chOf(s, a).label)}</th>${names.map((b, j) => i === j ? `<td class="diag">100</td>`
+      : `<td style="${tint(sp(a, b))}"><input class="spin" type="number" step="0.1" id="sp-${i}-${j}" data-a="${esc(a)}" data-b="${esc(b)}" value="${fmtPct(sp(a, b))}" aria-label="Spillover of ${esc(a)} into ${esc(b)}, percent"></td>`).join('')}</tr>`).join('') + '</tbody>';
+  const ff = $('#fromFile'); ff.disabled = !s.spill; ff.title = s.spill ? 'Load the spillover matrix stored in this file' : 'This file has no spillover matrix stored in it';
+  const opt = sel => `<option value="-1">None</option>` + state.samples.map((x, k) => `<option value="${k}" ${x === sel ? 'selected' : ''}>${esc(x.name)}</option>`).join('');
+  $('#ctrlTable').innerHTML = `<tbody><tr><th scope="row">Unstained</th><td><select id="ctrl-unst" data-ch="">${opt(C.unst)}</select></td></tr>` +
+    names.map((n, i) => `<tr><th scope="row">${esc(chOf(s, n).label)}</th><td><select id="ctrl-${i}" data-ch="${esc(n)}">${opt(C.ctrl[n])}</select></td></tr>`).join('') + '</tbody>';
+  $('#compOn').checked = C.on;
+  fillCompPop();
+}
+function fillCompPop(){
+  const sel = $('#ctrlPop'), C = state.comp;
+  sel.innerHTML = `<option value="auto">Automatic: cells (excludes debris and saturated events)</option><option value="all">All events</option>` + treeOrder().map(({g, depth}) => `<option value="${g.id}">${'\u00a0\u00a0'.repeat(depth - 1)}${esc(g.name)}</option>`).join('');
+  if (C.pop !== 'all' && C.pop !== 'auto' && !gateById(C.pop)) C.pop = 'auto';
+  sel.value = String(C.pop);
+}
+function autoAssign(){
+  const C = state.comp, s0 = cur(); if (!s0) return;
+  const names = C.chs.filter(n => n in s0.idx), ss = state.samples;
+  C.unst = ss.find(x => /unstain|unlabel|blank|\bunst\b|\bneg(ative)?\b|\bno ?ab\b/i.test(x.name)) || (ss.includes(C.unst) ? C.unst : null);
+  const used = new Set(Object.entries(C.ctrl).filter(([, x]) => ss.includes(x)).map(([n]) => n));
+  const p95 = (s, n) => { const X = s.raw[s.idx[n]], st = Math.max(1, Math.floor(s.n / 20000)), a = []; for (let i = 0; i < s.n; i += st) a.push(X[i]); return pct(a, .95); };
+  for (const x of ss){
+    if (x === C.unst || Object.values(C.ctrl).includes(x)) continue;
+    let hit = names.find(n => {
+      const c = chOf(s0, n), base = n.replace(/-[AHW]$/i, '');
+      return new RegExp(`(^|[^a-z0-9])${escRe(base)}([^a-z0-9]|$)`, 'i').test(x.name) || (c.stain && new RegExp(`(^|[^a-z0-9])${escRe(c.stain)}([^a-z0-9]|$)`, 'i').test(x.name));
+    });
+    if (!hit && C.unst && /single|comp|ctrl|control/i.test(x.name) && names.every(n => n in x.idx)){
+      let bs = 3; for (const n of names){ const sc = p95(x, n) / Math.max(1, p95(C.unst, n)); if (sc > bs && !used.has(n)){ bs = sc; hit = n; } }
+    }
+    if (hit && !used.has(hit)){ C.ctrl[hit] = x; used.add(hit); }
+  }
+}
+function calcFromControls(opts = {}){
+  const C = state.comp, s0 = cur(); if (!s0) return;
+  const names = C.chs.filter(n => n in s0.idx);
+  const maskFor = s => { applyComp(s); computeMasks(s); return C.pop === 'auto' ? autoCellMask(s, names) : popMask(s, C.pop); };
+  const stats = {};
+  const ids = (s, m) => { const out = []; for (let i = 0; i < s.n; i++) if (m[i]) out.push(i); return out; };
+  const med = (s, list, n) => { const X = s.raw[s.idx[n]]; return pct(list.map(i => X[i]), 0.5); };
+  const done = [], errs = [], newS = {...C.S};
+  let U = null, uIds = null;
+  if (C.unst && state.samples.includes(C.unst) && names.every(n => n in C.unst.idx)){
+    uIds = ids(C.unst, maskFor(C.unst));
+    if (uIds.length >= 30) U = C.unst; else errs.push('the unstained tube has too few events in the chosen population, so each control was compared with its own negative cells');
+  }
+  for (const a of names){
+    const s = C.ctrl[a]; if (!s || !state.samples.includes(s)) continue;
+    if (!names.every(n => n in s.idx)){ errs.push(`${a}: ${s.name} is missing some of the channels`); continue; }
+    const all = ids(s, maskFor(s)), Xa = s.raw[s.idx[a]];
+    if (all.length < 60){ errs.push(`${a}: too few events in ${s.name}`); continue; }
+    let nS = s, nIds;
+    if (U){ nS = U; nIds = uIds; } else { const t = pct(all.map(i => Xa[i]), 0.3); nIds = all.filter(i => Xa[i] <= t); }
+    const XaN = nS.raw[nS.idx[a]], thr = pct(nIds.map(i => XaN[i]), 0.995);
+    const pos = all.filter(i => Xa[i] > thr);
+    if (pos.length < 30){ errs.push(`${a}: fewer than 30 positive events in ${s.name}`); continue; }
+    const dA = med(s, pos, a) - med(nS, nIds, a);
+    if (!(dA > 0)){ errs.push(`${a}: the stained cells are not brighter than the negative cells`); continue; }
+    for (const b of names) if (b !== a) newS[a + '|' + b] = Math.max(0, Math.round((med(s, pos, b) - med(nS, nIds, b)) / dA * 1e4) / 1e4);
+    done.push(a); stats[a] = {pos: pos.length, cells: all.length};
+  }
+  if (opts.silent) { if (done.length){ C.S = newS; C.on = true; } renderComp(); refresh(); return {done, errs, stats}; }
+  if (!done.length && !errs.length){ showMsg('Assign at least one single-stain control tube to a channel, then calculate again.', false); return; }
+  C.S = newS; if (done.length) C.on = true;
+  renderComp(); refresh();
+  showMsg((done.length ? `Calculated spillover for ${done.join(', ')} and turned compensation on.` : 'No spillover values were calculated.') + (errs.length ? ' Problems: ' + errs.join('; ') + '.' : ''), !errs.length);
+}
+// Otsu threshold on log10(FSC) splits debris from cells; saturated events are dropped too
+function autoCellMask(s, names){
+  const m = new Uint8Array(s.n).fill(1);
+  const fi = s.idx['FSC-A'] ?? s.ch.findIndex(c => /^FSC/i.test(c.name));
+  if (fi != null && fi >= 0){
+    const F = s.raw[fi], st = Math.max(1, Math.floor(s.n / 30000)), L = [];
+    for (let i = 0; i < s.n; i += st) if (F[i] > 0) L.push(Math.log10(F[i]));
+    if (L.length > 50){
+      let lo = Infinity, hi = -Infinity; for (const v of L){ if (v < lo) lo = v; if (v > hi) hi = v; }
+      const NB = 128, h = new Float64Array(NB), w = (hi - lo) / NB || 1;
+      for (const v of L) h[Math.min(NB - 1, ((v - lo) / w) | 0)]++;
+      let tot = L.length, sumAll = 0; for (let i = 0; i < NB; i++) sumAll += i * h[i];
+      let wB = 0, sB = 0, best = 0, bi = 0;
+      for (let i = 0; i < NB; i++){
+        wB += h[i]; if (!wB) continue; const wF = tot - wB; if (!wF) break;
+        sB += i * h[i]; const mB = sB / wB, mF = (sumAll - sB) / wF, v = wB * wF * (mB - mF) ** 2;
+        if (v > best){ best = v; bi = i; }
+      }
+      // only split if the low group really is a separate, smaller population
+      const thr = 10 ** (lo + (bi + 1) * w); let below = 0; for (const v of L) if (v < lo + (bi + 1) * w) below++;
+      if (below / L.length < 0.5) for (let i = 0; i < s.n; i++) if (!(F[i] > thr)) m[i] = 0;
+    }
+  }
+  const sat = [...new Set([...(names || []), 'FSC-A', 'SSC-A'])].filter(n => n in s.idx).map(n => [s.raw[s.idx[n]], s.ch[s.idx[n]].range * 0.995]);
+  for (let i = 0; i < s.n; i++) if (m[i]) for (const [X, lim] of sat) if (X[i] >= lim){ m[i] = 0; break; }
+  return m;
+}
+// Finds the unstained tube and one single-stain tube per channel. File names win; otherwise brightness.
+function detectControls(){
+  const C = state.comp, s0 = cur(); if (!s0) return [];
+  const names = C.chs.filter(n => n in s0.idx), ss = state.samples.filter(x => names.every(n => n in x.idx));
+  const report = [];
+  if (ss.length < 2 || names.length < 2) return report;
+  const p95c = new Map();
+  const p95 = (x, n) => { const k = x.name + '|' + n; if (p95c.has(k)) return p95c.get(k); const m = autoCellMask(x, names), X = x.raw[x.idx[n]], a = []; const st = Math.max(1, Math.floor(x.n / 20000)); for (let i = 0; i < x.n; i += st) if (m[i]) a.push(X[i]); const v = Math.max(1, pct(a, .95)); p95c.set(k, v); return v; };
+  const byName = ss.find(x => /unstain|unlabel|blank|\bunst\b|\bneg(ative)?\b|\bno ?ab\b/i.test(x.name));
+  const U = byName || ss.reduce((best, x) => { const t = names.reduce((a, n) => a + Math.log10(p95(x, n)), 0); return !best || t < best.t ? {x, t} : best; }, null).x;
+  C.unst = U; C.ctrl = {};
+  report.push({ch: 'Unstained', x: U, why: byName ? 'matched by file name' : 'dimmest tube in every channel'});
+  const nameHit = x => names.find(n => { const c = chOf(s0, n), base = n.replace(/-[AHW]$/i, '');
+    return new RegExp(`(^|[^a-z0-9])${escRe(base)}([^a-z0-9]|$)`, 'i').test(x.name) || (c.stain && new RegExp(`(^|[^a-z0-9])${escRe(c.stain)}([^a-z0-9]|$)`, 'i').test(x.name)); });
+  const best = {};
+  for (const x of ss){
+    if (x === U) continue;
+    const r = names.map(n => ({n, r: p95(x, n) / p95(U, n)})).sort((a, b) => b.r - a.r);
+    const top = r[0], spec = top.r / Math.max(1, r[1].r), nh = nameHit(x);
+    if (nh && /single|comp|ctrl|control|only/i.test(x.name)){
+      const rn = r.find(q => q.n === nh).r;
+      if (rn >= 2 && (!best[nh] || !best[nh].named || spec > best[nh].spec)) best[nh] = {x, spec, r: rn, named: true};
+      continue;
+    }
+    // a single-stained tube is much brighter than unstained in one channel and clearly brighter there than anywhere else
+    if (top.r >= 4 && spec >= 3 && !(best[top.n]?.named) && (!best[top.n] || spec > best[top.n].spec)) best[top.n] = {x, spec, r: top.r, named: false};
+  }
+  for (const n of names){
+    const b = best[n];
+    if (b){ C.ctrl[n] = b.x; report.push({ch: n, x: b.x, why: (b.named ? 'matched by file name, ' : '') + `${b.r.toFixed(0)}× brighter than unstained`}); }
+    else report.push({ch: n, x: null, why: 'no single-stain tube found'});
+  }
+  return report;
+}
+function showAutoReport(report, result){
+  const el = $('#autoReport'); if (!report.length){ el.hidden = true; return; }
+  const s0 = cur();
+  el.innerHTML = `<h4>What Auto-compensate used</h4><ul>` + report.map(r => {
+    const st = result?.stats?.[r.ch];
+    return `<li><strong>${esc(r.ch === 'Unstained' ? r.ch : chOf(s0, r.ch)?.label || r.ch)}:</strong> ${r.x ? esc(r.x.name) : '<em>none</em>'} <span class="why">(${esc(r.why)}${st ? `; ${nf.format(st.pos)} positive of ${nf.format(st.cells)} cells` : ''})</span></li>`;
+  }).join('') + `</ul>`;
+  el.hidden = false;
+}
+$('#autoCompBtn').addEventListener('click', () => {
+  const s0 = cur(); if (!s0) return;
+  if (state.comp.chs.filter(n => n in s0.idx).length < 2){ showMsg('Tick at least two channels under "Channels to compensate" first.', false); return; }
+  const report = detectControls();
+  const found = report.filter(r => r.ch !== 'Unstained' && r.x).length;
+  if (!found){ renderComp(); showAutoReport(report); showMsg('Auto-compensate found no single-stain control tubes. Load an unstained tube and one tube per dye, each stained with that dye alone.', false); return; }
+  const res = calcFromControls({silent: true});
+  showAutoReport(report, res);
+  showMsg(res.done.length ? `Auto-compensated ${res.done.length} channel${res.done.length > 1 ? 's' : ''} (${res.done.join(', ')}) and turned compensation on. Check the tubes it chose below.` + (res.errs.length ? ' Problems: ' + res.errs.join('; ') + '.' : '') : 'Auto-compensate could not calculate any spillover. ' + res.errs.join('; ') + '.', !res.errs.length && res.done.length > 0);
+});
+let compTimer;
+const refreshSoon = () => { clearTimeout(compTimer); compTimer = setTimeout(refresh, 200); };
+$('#compOn').addEventListener('change', e => { state.comp.on = e.target.checked; refresh(); });
+$('#compChs').addEventListener('change', () => {
+  const s = cur(), on = new Set([...document.querySelectorAll('#compChs input:checked')].map(i => i.value));
+  state.comp.chs = [...document.querySelectorAll('#compChs input')].map(i => i.value).filter(n => on.has(n));
+  renderComp(); refresh();
+});
+$('#spillTable').addEventListener('change', () => { if (!state.comp.on) markChange(); });
+$('#spillTable').addEventListener('input', e => {
+  const inp = e.target.closest('.spin'); if (!inp) return;
+  const v = parseFloat(inp.value); const f = Number.isFinite(v) ? v / 100 : 0;
+  state.comp.S[inp.dataset.a + '|' + inp.dataset.b] = f;
+  inp.parentElement.setAttribute('style', tint(f));
+  if (state.comp.on) refreshSoon();
+});
+$('#ctrlTable').addEventListener('change', e => {
+  const sel = e.target.closest('select'); if (!sel) return;
+  const x = state.samples[+sel.value] || null;
+  if (sel.id === 'ctrl-unst') state.comp.unst = x; else state.comp.ctrl[sel.dataset.ch] = x;
+  markChange();
+});
+$('#ctrlPop').addEventListener('change', e => { const v = e.target.value; state.comp.pop = v === 'all' || v === 'auto' ? v : +v; markChange(); });
+$('#autoBtn').addEventListener('click', () => { const r = detectControls(); renderComp(); showAutoReport(r); markChange(); });
+$('#calcBtn').addEventListener('click', calcFromControls);
+$('#clearSpill').addEventListener('click', () => { state.comp.S = {}; renderComp(); refresh(); });
+$('#fromFile').addEventListener('click', () => {
+  const s = cur(); if (!s?.spill) return;
+  const {names, M} = s.spill, present = names.filter(n => n in s.idx);
+  state.comp.chs = present; state.comp.S = {};
+  names.forEach((a, i) => names.forEach((b, j) => { if (i !== j) state.comp.S[a + '|' + b] = M[i][j]; }));
+  state.comp.on = true; renderComp(); refresh();
+  showMsg(`Loaded the spillover matrix stored in ${s.name} (${present.length} channels) and turned compensation on.`, true);
+});
+
+/* ---------------- Events ---------------- */
+$('#popTable').addEventListener('click', e => {
+  const del = e.target.closest('[data-del]'); if (del){ deleteGate(+del.dataset.del); return; }
+  if (e.target.closest('input')) return;
+  const tr = e.target.closest('tr[data-id]'); if (!tr) return;
+  selectGate(tr.dataset.id === 'all' ? null : +tr.dataset.id);
+});
+$('#popTable').addEventListener('change', e => {
+  const inp = e.target.closest('.gname'); if (!inp) return;
+  const g = gateById(+inp.dataset.id); if (!g) return;
+  g.name = inp.value.trim() || g.name;
+  panels.forEach(p => { p.fillPops(); p.draw(); }); renderTable(); fillCompPop(); fillCcParent(); markChange();
+});
+$('#popTable').addEventListener('focusin', e => { const inp = e.target.closest('.gname'); if (inp && state.sel !== +inp.dataset.id){ state.sel = +inp.dataset.id; drawAllOverlays(); document.querySelectorAll('#popTable tr').forEach(tr => tr.classList.toggle('sel', tr.dataset.id === inp.dataset.id)); } });
+$('#statSel').addEventListener('change', e => { state.statCh = e.target.value; renderTable(); });
+$('#sampleSel').addEventListener('change', e => setCurrent(+e.target.value));
+const stepSample = d => { const n = state.samples.length; if (n > 1) setCurrent((state.cur + d + n) % n); };
+$('#prevSample').addEventListener('click', () => stepSample(-1));
+$('#nextSample').addEventListener('click', () => stepSample(1));
+$('#copyBtn').addEventListener('click', () => {
+  const s = cur(); if (!s) return;
+  const rows = popRows(), cnt = id => rows.find(r => r.id === id)?.c || 0;
+  const head = ['Sample', 'Population', 'Parent', 'Events', '% of parent', '% of total', `Median ${state.statCh}`, `Mean ${state.statCh}`, 'CV %', 'Compensation'];
+  const lines = [head.join('\t')].concat(rows.map(r => [s.name, r.name, r.parent == null ? '' : popName(r.parent), r.c,
+    r.parent == null ? '' : (cnt(r.parent) ? (100 * r.c / cnt(r.parent)).toFixed(2) : '0'), (100 * r.c / (s.n || 1)).toFixed(2),
+    Number.isFinite(r.med) ? r.med.toFixed(1) : '', Number.isFinite(r.mean) ? r.mean.toFixed(1) : '', Number.isFinite(r.cv) ? r.cv.toFixed(2) : '', s.compChs?.size ? 'on' : 'off'].join('\t')));
+  const txt = lines.join('\n'), btn = $('#copyBtn');
+  const fallback = () => { $('#copyFallback').hidden = false; const ta = $('#copyText'); ta.value = txt; ta.focus(); ta.select(); };
+  try {
+    navigator.clipboard.writeText(txt).then(() => { $('#copyFallback').hidden = true; btn.textContent = 'Copied'; setTimeout(() => btn.textContent = 'Copy table', 1600); }, fallback);
+  } catch(err){ fallback(); }
+});
+document.addEventListener('keydown', e => {
+  const tag = e.target.tagName;
+  if (e.key === 'Escape'){
+    let restored = false;
+    panels.forEach(p => { if (p.drag){ p.drag.g.pts = p.drag.orig; p.drag = null; restored = true; } p.draft = null; p.drawOver(); });
+    if (restored) refresh();
+    return;
+  }
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && (e.key.toLowerCase() === 'z' || e.key.toLowerCase() === 'y')){
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return; // keep the browser's own text undo while typing
+    e.preventDefault();
+    if (e.key.toLowerCase() === 'y' || e.shiftKey) redo(); else undo();
+    return;
+  }
+  if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+  if (e.key === 'Enter') panels.forEach(p => { if (p.draft?.type === 'poly') p.finishPoly(); });
+  if ((e.key === 'Delete' || e.key === 'Backspace') && state.sel != null && (e.target === document.body || e.target.tagName === 'CANVAS' || e.target.closest?.('#popTable'))){ e.preventDefault(); deleteGate(state.sel); }
+});
+
+function showMsg(text, ok){ const m = $('#msg'); $('#msgText').textContent = text; m.classList.toggle('ok', !!ok); m.hidden = !text; }
+$('#msgClose').addEventListener('click', () => showMsg(''));
+async function loadFiles(files){
+  const added = [], errs = [];
+  for (const f of files){
+    try { added.push(parseFCS(await f.arrayBuffer(), f.name)); }
+    catch(err){ errs.push(`${f.name}: ${err.message}`); }
+  }
+  const hadExamples = state.samples.some(s => s.example);
+  if (added.length){
+    if (hadExamples){
+      state.samples = state.samples.filter(s => !s.example);
+      state.gates = state.gates.filter(g => !g.example && !g.cc);
+      state.cc = null;
+      panels.forEach(p => { if (p.pop !== 'all' && !gateById(p.pop)) p.pop = 'all'; });
+      state.sel = null;
+      if (!state.gates.length) state.nextId = 1;
+      state.comp = {on: false, chs: [], S: {}, ctrl: {}, unst: null, pop: 'auto'};
+    }
+    const first = state.samples.length; state.samples.push(...added); setCurrent(first);
+    autoAssign(); renderComp();
+    if (hadExamples) resetHistory(); else markChange();
+  }
+  showMsg(errs.length ? `Couldn't open ${errs.join(' · ')}` : '', false);
+}
+$('#file').addEventListener('change', e => { loadFiles([...e.target.files]); e.target.value = ''; });
+let dragDepth = 0;
+const hasFiles = e => [...(e.dataTransfer?.types || [])].includes('Files');
+window.addEventListener('dragenter', e => { if (!hasFiles(e)) return; e.preventDefault(); dragDepth++; $('#drop').hidden = false; });
+window.addEventListener('dragover', e => { if (hasFiles(e)) e.preventDefault(); });
+window.addEventListener('dragleave', () => { dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth) $('#drop').hidden = true; });
+window.addEventListener('drop', e => { if (!hasFiles(e)) return; e.preventDefault(); dragDepth = 0; $('#drop').hidden = true; loadFiles([...e.dataTransfer.files]); });
+
+const redraw = () => panels.forEach(p => p.draw());
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', redraw);
+new MutationObserver(redraw).observe(document.documentElement, {attributes: true, attributeFilter: ['data-theme']});
+document.fonts?.ready.then(redraw);
+
+/* ---------------- Example data (synthetic, written as a real FCS 3.0 file) ---------------- */
+function writeFCS(names, stains, cols, extra){
+  const P = names.length, n = cols[0].length, dataLen = n * P * 4;
+  const kv = [['$BYTEORD', '4,3,2,1'], ['$DATATYPE', 'I'], ['$MODE', 'L'], ['$NEXTDATA', '0'], ['$PAR', String(P)], ['$TOT', String(n)],
+    ['$BEGINANALYSIS', '0'], ['$ENDANALYSIS', '0'], ['$BEGINSTEXT', '0'], ['$ENDSTEXT', '0'], ['$BEGINDATA', '000000000000'], ['$ENDDATA', '000000000000'], ...extra];
+  names.forEach((nm, i) => { const p = i + 1; kv.push([`$P${p}N`, nm], [`$P${p}B`, '32'], [`$P${p}E`, '0,0'], [`$P${p}R`, '16777216']); if (stains[i]) kv.push([`$P${p}S`, stains[i]]); });
+  const build = () => '|' + kv.map(([k, v]) => k + '|' + v).join('|') + '|';
+  const tS = 58, tE = tS + build().length - 1, dS = tE + 1, dE = dS + dataLen - 1;
+  kv.find(k => k[0] === '$BEGINDATA')[1] = String(dS).padStart(12, '0');
+  kv.find(k => k[0] === '$ENDDATA')[1] = String(dE).padStart(12, '0');
+  const text = build(), p8 = v => String(v).padStart(8, ' ');
+  const header = 'FCS3.0    ' + p8(tS) + p8(tE) + p8(dS) + p8(dE) + p8(0) + p8(0);
+  const buf = new ArrayBuffer(dS + dataLen), u8 = new Uint8Array(buf), dv = new DataView(buf);
+  for (let i = 0; i < header.length; i++) u8[i] = header.charCodeAt(i);
+  for (let i = 0; i < text.length; i++) u8[tS + i] = text.charCodeAt(i) & 255;
+  let off = dS;
+  for (let e = 0; e < n; e++) for (let p = 0; p < P; p++){ dv.setUint32(off, clamp(Math.round(cols[p][e]), 0, 16777215), false); off += 4; }
+  return buf;
+}
+const TRUE_SPILL = [[1, .12, .025, .002], [.015, 1, .18, .01], [0, .03, 1, .08], [0, .002, .03, 1]];
+function makeTube(kind, n, seed0, label){
+  let seed = seed0;
+  const r = () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  const g = () => { let u = 0, v = 0; while (!u) u = r(); while (!v) v = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+  const L = (m, sd) => 10 ** (m + sd * g());
+  const names = ['FSC-A','SSC-A','FL1-A','FL2-A','FL3-A','FL4-A','FSC-H','SSC-H','Width','Time'];
+  const stains = ['', '', 'FITC', 'PE', 'PerCP', 'APC', '', '', '', ''];
+  const AF = {debris: [[2.8,2.6,2.5,2.4], .35], lymph: [[3.2,3.1,3.0,2.9], .25], mono: [[3.6,3.5,3.3,3.1], .2], gran: [[3.75,3.5,3.2,3.0], .18], dbl: [[3.5,3.4,3.1,3.0], .3]};
+  const LEVEL = [5.0, 4.75, 4.45, 4.6];
+  const single = {FITC: 0, PE: 1, PerCP: 2, APC: 3}[kind];
+  const cols = names.map(() => new Float64Array(n));
+  for (let i = 0; i < n; i++){
+    const k = r(); let type, fsc, ssc;
+    if (k < 0.14){ type = 'debris'; fsc = L(5.0, 0.32); ssc = L(4.6, 0.38); }
+    else if (k < 0.64){ type = 'lymph'; fsc = L(6.08, 0.06); ssc = L(5.42, 0.1); }
+    else if (k < 0.76){ type = 'mono'; fsc = L(6.38, 0.06); ssc = L(5.92, 0.09); }
+    else if (k < 0.96){ type = 'gran'; fsc = L(6.42, 0.05); ssc = L(6.42, 0.07); }
+    else { type = 'dbl'; fsc = L(6.08, 0.06) * 2; ssc = L(5.45, 0.1) * 1.9; }
+    const [am, asd] = AF[type], dye = [0, 0, 0, 0];
+    if (kind === 'stained'){
+      if (type === 'lymph' || type === 'dbl'){
+        const m = r(), x = type === 'dbl' ? 1.9 : 1;
+        if (m < 0.38) dye[0] = L(5.0, .17) * x; else if (m < 0.60) dye[1] = L(4.75, .18) * x;
+        if (r() < 0.15) dye[3] = L(4.6, .2) * x;
+      } else if (type === 'mono' && r() < 0.7) dye[2] = L(4.3, .2);
+    } else if (single !== undefined && type !== 'debris' && r() < 0.5) dye[single] = L(LEVEL[single], .2);
+    const obs = [0, 1, 2, 3].map(j => L(am[j], asd) + dye.reduce((t, d, q) => t + d * TRUE_SPILL[q][j], 0));
+    const fh = (type === 'dbl' ? fsc / 2 * 1.05 : fsc) * (0.84 + 0.02 * g()), sh = ssc * (0.8 + 0.03 * g());
+    const row = [fsc, ssc, ...obs, fh, sh, 1000 * fsc / fh * (1 + 0.02 * g()), i * 1.5 + 1.5 * r()];
+    row.forEach((v, p) => cols[p][i] = v);
+  }
+  const buf = writeFCS(names, stains, cols, [['$CYT', 'Synthetic example'], ['$DATE', '28-OCT-2026'], ['$FIL', label + '.fcs'], ['$SRC', 'Generated in the browser']]);
+  const s = parseFCS(buf, label);
+  s.example = true;
+  return s;
+}
+function makeCellCycleTube(kind, n, seed0, label){
+  let seed = seed0;
+  const r = () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  const g = () => { let u = 0, v = 0; while (!u) u = r(); while (!v) v = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+  const L = (m, sd) => 10 ** (m + sd * g());
+  const names = ['FSC-A','SSC-A','FL1-A','FL2-A','FL3-A','FL4-A','FSC-H','SSC-H','FL2-H','Width','Time'];
+  const stains = ['', '', '', 'PI', '', '', '', '', '', '', ''];
+  // fractions of intact events: sub-G1, G0/G1, S, G2/M, >4N, doublets
+  const F = kind === 'arrest' ? [0.08, 0.17, 0.13, 0.52, 0.05, 0.05] : [0.03, 0.56, 0.22, 0.13, 0.01, 0.05];
+  const G1 = 1.15e6, cum = F.map((v, i) => F.slice(0, i + 1).reduce((a, b) => a + b, 0));
+  const cell = () => { // DNA of one intact cell, for doublets
+    const k = r(); if (k < 0.65) return G1 * (1 + 0.035 * g()); if (k < 0.85) return G1 * (1 + 0.97 * r()) * (1 + 0.03 * g()); return 1.97 * G1 * (1 + 0.033 * g()); };
+  const cols = names.map(() => new Float64Array(n));
+  for (let i = 0; i < n; i++){
+    let dna, ht, fsc, dbl = false;
+    if (r() < 0.06){ dna = L(4.2, 0.4); ht = dna * 0.6 * (1 + 0.05 * g()); fsc = L(5.0, 0.3); }
+    else {
+      const k = r() * cum[5];
+      if (k < cum[0]) dna = G1 * (0.15 + 0.7 * r() ** 0.6);
+      else if (k < cum[1]) dna = G1 * (1 + 0.035 * g());
+      else if (k < cum[2]) dna = G1 * (1 + 0.97 * r() ** 1.1) * (1 + 0.03 * g());
+      else if (k < cum[3]) dna = 1.97 * G1 * (1 + 0.033 * g());
+      else if (k < cum[4]) dna = 3.9 * G1 * (1 + 0.04 * g());
+      else { const a1 = cell(), a2 = cell(); dna = a1 + a2; ht = 0.55 * Math.max(a1, a2) * 1.12 * (1 + 0.03 * g()); dbl = true; }
+      if (!dbl) ht = dna * 0.55 * (1 + 0.025 * g());
+      fsc = 10 ** (6.1 + 0.08 * (Math.min(dna, 4 * G1) / G1 - 1)) * (1 + 0.06 * g()) * (dbl ? 1.9 : 1) * (k < cum[0] ? 0.6 : 1);
+    }
+    const fh = (dbl ? fsc / 1.9 * 1.05 : fsc) * (0.84 + 0.02 * g()), ssc = L(5.6, 0.1) * (dbl ? 1.8 : 1);
+    const row = [fsc, ssc, L(3.1, .25) + 0.005 * dna, dna, L(3.0, .25) + 0.35 * dna, L(2.9, .25) + 0.02 * dna, fh, ssc * (0.8 + 0.03 * g()), ht, 1000 * fsc / fh * (1 + 0.02 * g()), i * 1.5 + 1.5 * r()];
+    row.forEach((v, q) => cols[q][i] = v);
+  }
+  const buf = writeFCS(names, stains, cols, [['$CYT', 'Synthetic example'], ['$DATE', '19-NOV-2026'], ['$FIL', label + '.fcs'], ['$SRC', 'Generated in the browser (PI cell cycle)']]);
+  const s = parseFCS(buf, label); s.example = true; return s;
+}
+function makeExamples(){
+  return [
+    makeTube('stained', 40000, 20261028, 'Example: stained sample (synthetic)'),
+    makeTube('unstained', 12000, 11, 'Example: unstained control'),
+    makeTube('FITC', 12000, 12, 'Example: FITC single stain'),
+    makeTube('PE', 12000, 13, 'Example: PE single stain'),
+    makeTube('PerCP', 12000, 14, 'Example: PerCP single stain'),
+    makeTube('APC', 12000, 15, 'Example: APC single stain'),
+    makeCellCycleTube('untreated', 30000, 21, 'Example: cell cycle, untreated (PI, synthetic)'),
+    makeCellCycleTube('arrest', 30000, 22, 'Example: cell cycle, G2/M arrest (PI, synthetic)'),
+  ];
+}
+
+/* ---------------- Cell cycle ---------------- */
+function erf(x){ // Abramowitz & Stegun 7.1.26
+  const t = 1 / (1 + 0.3275911 * Math.abs(x)), y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x);
+  return x >= 0 ? y : -y;
+}
+const gaussPdf = (x, m, sd) => { const z = (x - m) / sd; return Math.exp(-0.5 * z * z) / (sd * 2.5066282746); };
+// Histogram model: two Gaussians (G0/G1, G2/M) plus S phase taken as what is left between the peaks.
+function fitCellCycle(V){
+  const n = V.length;
+  if (n < 200) return {ok: false, why: 'Too few single cells to fit (at least 200 are needed).'};
+  const sorted = Float64Array.from(V).sort(), hiV = sorted[Math.floor((n - 1) * 0.998)] * 1.15;
+  if (!(hiV > 0)) return {ok: false, why: 'This channel has no positive DNA signal.'};
+  const NB = 512, bw = hiV / NB, h = new Float64Array(NB);
+  for (const v of V) if (v >= 0 && v < hiV) h[(v / bw) | 0]++;
+  const SG = 2, K = []; for (let k = -6; k <= 6; k++) K.push(Math.exp(-k * k / (2 * SG * SG)));
+  const ks = K.reduce((a, b) => a + b), sm = new Float64Array(NB);
+  for (let i = 0; i < NB; i++){ let t = 0; for (let k = -6; k <= 6; k++){ const j = i + k; if (j >= 0 && j < NB) t += h[j] * K[k + 6]; } sm[i] = t / ks; }
+  let mx = 0; for (const v of sm) if (v > mx) mx = v;
+  const peaks = [];
+  for (let i = 4; i < NB - 4; i++){
+    if (sm[i] < 0.03 * mx || !(sm[i] > sm[i - 1])) continue;
+    let top = true; for (let k = -4; k <= 4; k++) if (sm[i + k] > sm[i]){ top = false; break; }
+    if (top) peaks.push(i);
+  }
+  peaks.sort((a, b) => sm[b] - sm[a]);
+  const cand = peaks.slice(0, 6);
+  let best = null;
+  for (const a of cand) for (const b of cand){
+    if (b <= a) continue;
+    const r = (b + 0.5) / (a + 0.5);
+    if (r >= 1.75 && r <= 2.25 && (!best || sm[a] + sm[b] > best.score)) best = {a, b, score: sm[a] + sm[b]};
+  }
+  if (!best) return {ok: false, why: 'No G0/G1 and G2/M peak pair was found (the second peak should sit at about twice the DNA of the first). This sample may not be stained for DNA, or the wrong channel is selected.'};
+  const refine = i => { const a = sm[i - 1], b = sm[i], c = sm[i + 1], d = a - 2 * b + c, off = d ? clamp(0.5 * (a - c) / d, -1, 1) : 0; return {x: (i + 0.5 + off) * bw, h: b - 0.25 * (a - c) * off}; };
+  const P1 = refine(best.a), P2 = refine(best.b);
+  const halfL = (i, hh) => { for (let j = i; j > 0; j--) if (sm[j - 1] < hh / 2){ const t = (hh / 2 - sm[j - 1]) / (sm[j] - sm[j - 1]); return (j - 1 + t + 0.5) * bw; } return 0; };
+  const halfR = (i, hh) => { for (let j = i; j < NB - 1; j++) if (sm[j + 1] < hh / 2){ const t = (sm[j] - hh / 2) / (sm[j] - sm[j + 1]); return (j + t + 0.5) * bw; } return NB * bw; };
+  // widths come from the outer side of each peak, away from S phase
+  const sdo1 = Math.max(bw, (P1.x - halfL(best.a, P1.h)) / 1.17741), sdo2 = Math.max(bw, (halfR(best.b, P2.h) - P2.x) / 1.17741);
+  const sk = SG * bw, sdt = so => Math.sqrt(Math.max(so * so - sk * sk, (bw / 2) ** 2));
+  // Dean-Jett-Fox style: S phase is a straight-line ramp from G0/G1 to G2/M, blurred by the same
+  // measurement spread as the peaks, so S-phase cells hiding under each peak are counted as S.
+  const mu1f = P1.x, mu2f = P2.x, R2 = Math.SQRT2;
+  const blur = x => 0.5 * (erf((x - mu1f) / (R2 * sdo1)) - erf((x - mu2f) / (R2 * sdo2)));
+  let sL = 0, sR = 0, n1 = 0, n2 = 0;
+  const sModel = x => Math.max(0, sL + (sR - sL) * (x - mu1f) / (mu2f - mu1f)) * blur(x);
+  for (let it = 0; it < 4; it++){
+    n1 = Math.max(0, P1.h - sModel(mu1f)) * sdo1 * 2.5066282746 / bw;
+    n2 = Math.max(0, P2.h - sModel(mu2f)) * sdo2 * 2.5066282746 / bw;
+    // straight line through what is left in the middle of S phase, clear of both peaks
+    let sw = 0, sx = 0, sy = 0, sxx = 0, sxy = 0;
+    for (let i = 0; i < NB; i++){
+      const x = (i + 0.5) * bw; if (x < mu1f + 2.5 * sdo1 || x > mu2f - 2.5 * sdo2) continue;
+      const y = sm[i] - n1 * bw * gaussPdf(x, mu1f, sdo1) - n2 * bw * gaussPdf(x, mu2f, sdo2);
+      sw++; sx += x; sy += y; sxx += x * x; sxy += x * y;
+    }
+    if (sw < 3) break;
+    const den = sw * sxx - sx * sx, slope = den ? (sw * sxy - sx * sy) / den : 0, icpt = (sy - slope * sx) / sw;
+    sL = Math.max(0, icpt + slope * mu1f); sR = Math.max(0, icpt + slope * mu2f);
+  }
+  const sCurve = new Float64Array(NB); let nSraw = 0;
+  for (let i = 0; i < NB; i++){ const v = sModel((i + 0.5) * bw); sCurve[i] = v; nSraw += v; }
+  const mu1 = P1.x, mu2 = P2.x, sd1 = sdt(sdo1), sd2 = sdt(sdo2), lo1 = mu1 - 3 * sd1, hi2 = mu2 + 3 * sd2, floor = 0.1 * mu1;
+  let sub = 0, poly = 0, cyc = 0, debris = 0;
+  for (const v of V){ if (v < floor) debris++; else if (v < lo1) sub++; else if (v > hi2) poly++; else cyc++; }
+  const tot = n1 + nSraw + n2 || 1;
+  return {ok: true, mu1, mu2, sd1, sd2, cv1: sd1 / mu1, cv2: sd2 / mu2, ratio: mu2 / mu1, total: n, debris, sub, poly, cyc,
+    G1: n1 / tot * cyc, S: nSraw / tot * cyc, G2: n2 / tot * cyc, sCurve, nSraw, bw, lo1, hi2};
+}
+function defaultDnaChannel(s){
+  const c = s.ch.find(c => DNA_DYE.test(c.stain || '') && !/-[HW]$/i.test(c.name));
+  return c ? c.name : ('FL2-A' in s.idx ? 'FL2-A' : (s.ch.find(c => !c.isScatter && !c.isTime) || s.ch[0]).name);
+}
+function pulseFor(s, a){ const base = a.replace(/-A$/i, ''); return [base + '-H', base + '-W'].find(n => n in s.idx && n !== a) || ''; }
+function fillCellCycleSetup(){
+  const s = cur(); if (!s) return;
+  const cc = state.cc, ch = cc && cc.ch in s.idx ? cc.ch : defaultDnaChannel(s);
+  const opts = (list, sel) => list.map(c => `<option value="${esc(c.name)}" ${c.name === sel ? 'selected' : ''}>${esc(c.label)}</option>`).join('');
+  $('#ccCh').innerHTML = opts(s.ch.filter(c => !c.isTime), ch);
+  const hch = cc && (cc.hch === '' || cc.hch in s.idx) ? cc.hch : pulseFor(s, ch);
+  $('#ccH').innerHTML = `<option value="">None (skip doublet check)</option>` + opts(s.ch.filter(c => !c.isTime && c.name !== ch), hch);
+  $('#ccH').value = hch;
+  fillCcParent();
+}
+function fillCcParent(){
+  const sel = $('#ccParent'), cc = state.cc, want = cc ? String(cc.parent) : sel.value || 'all';
+  sel.innerHTML = `<option value="all">All events</option>` + treeOrder().filter(({g}) => !g.cc).map(({g, depth}) => `<option value="${g.id}">${'\u00a0\u00a0'.repeat(depth - 1)}${esc(g.name)}</option>`).join('');
+  sel.value = [...sel.options].some(o => o.value === want) ? want : 'all';
+}
+$('#ccCh').addEventListener('change', () => { const s = cur(); if (s) $('#ccH').value = pulseFor(s, $('#ccCh').value); });
+function singletWedge(s, a, hch, parent){
+  const A = s.cols[s.idx[a]], H = s.cols[s.idx[hch]], m = popMask(s, parent), r = [], As = [];
+  for (let i = 0; i < s.n; i++) if (m[i] && A[i] > 0 && H[i] > 0) As.push(A[i]);
+  if (As.length < 200) return null;
+  const a5 = pct(As, 0.05), a95 = pct(As, 0.95);
+  for (let i = 0; i < s.n; i++) if (m[i] && A[i] >= a5 && A[i] <= a95 && H[i] > 0) r.push(A[i] / H[i]);
+  const med = pct(r, 0.5), mad = pct(r.map(v => Math.abs(v - med)), 0.5) * 1.4826;
+  const k = Math.max(0.12, 4 * mad / med), rmin = med * (1 - k), rmax = med * (1 + k);
+  const hiA = makeScale('lin', chOf(s, a)).hi, hiH = makeScale('lin', chOf(s, hch)).hi;
+  const far = Math.min(hiA, hiH * rmin) * 0.999;
+  return {pts: [[0, 0], [far, far / rmax], [far, far / rmin]], med, rmin, rmax};
+}
+function removeCellCycleGates(){
+  const kill = new Set(state.gates.filter(g => g.cc).map(g => g.id)); let grew = true;
+  while (grew){ grew = false; for (const g of state.gates) if (!kill.has(g.id) && kill.has(g.parent)){ kill.add(g.id); grew = true; } }
+  state.gates = state.gates.filter(g => !kill.has(g.id));
+  panels.forEach(p => { if (kill.has(p.pop)) p.pop = 'all'; });
+  if (kill.has(state.sel)) state.sel = null;
+}
+function newGate(o){ const g = {id: state.nextId++, cc: true, ...o}; state.gates.push(g); return g; }
+function runCellCycle(){
+  hist.busy++;
+  try { runCellCycleInner(); } finally { hist.busy--; }
+  markChange();
+}
+function runCellCycleInner(){
+  const s = cur(); if (!s) return;
+  const ch = $('#ccCh').value, hch = $('#ccH').value, pv = $('#ccParent').value, parent = pv === 'all' ? 'all' : +pv;
+  removeCellCycleGates();
+  computeMasks(s);
+  const parentId = parent === 'all' ? null : parent;
+  let singId = null, wedge = null;
+  if (hch){
+    wedge = singletWedge(s, ch, hch, parent);
+    if (wedge){ singId = newGate({name: 'Singlets', parent: parentId, type: 'poly', shape: 'poly', xch: ch, ych: hch, xs: 'lin', ys: 'lin', pts: wedge.pts}).id; computeMasks(s); }
+  }
+  const base = singId ?? parent, m = popMask(s, base), X = s.cols[s.idx[ch]], V = [];
+  for (let i = 0; i < s.n; i++) if (m[i]) V.push(X[i]);
+  const f = fitCellCycle(V);
+  state.cc = {ch, hch, parent, singId, fit: f, wedge};
+  if (f.ok){
+    const sp = singId ?? parentId, R = (name, a, b) => newGate({name, parent: sp, type: 'range', shape: 'range', xch: ch, ych: null, xs: 'lin', ys: null, pts: [[a], [b]]});
+    R('Sub-G1', 0.1 * f.mu1, f.lo1);
+    R('G0/G1', f.lo1, f.mu1 + 2 * f.sd1);
+    R('S', f.mu1 + 2 * f.sd1, f.mu2 - 2 * f.sd2);
+    R('G2/M', f.mu2 - 2 * f.sd2, f.hi2);
+    R('>4N', f.hi2, EDGE);
+  }
+  // two plots to check the result: area vs height (singlets) and the DNA histogram with the model
+  const setup = (role, fn) => { let p = panels.find(q => q.role === role); if (!p) p = addPanel({pop: 'all'}) || panels[panels.length - 1]; p.role = role; fn(p); p.draft = null; p.setTool('select'); p.syncControls(); return p; };
+  let first = null;
+  if (singId != null || hch){
+    first = setup('cc-pulse', p => { p.pop = parent; p.xn = ch; p.xs = 'lin'; p.yn = hch; p.ys = 'lin'; });
+  }
+  const hp = setup('cc-hist', p => { p.pop = base; p.xn = ch; p.xs = 'lin'; if (!p.isHist){ p.y2 = p.yn; } p.yn = HIST; });
+  state.sel = null;
+  refresh();
+  (first || hp).el.scrollIntoView({behavior: 'smooth', block: 'start'});
+  showMsg(f.ok ? `Cell-cycle auto-gating done for ${s.name}: ${hch && singId != null ? 'single cells gated, ' : ''}histogram fitted and five phase gates added (Sub-G1, G0/G1, S, G2/M, >4N). Results are in the Cell cycle section.` : `Cell-cycle auto-gating could not fit ${s.name}. ${f.why}`, f.ok);
+}
+$('#ccRun').addEventListener('click', runCellCycle);
+function ccFitFor(s){
+  const cc = state.cc; if (!cc || !(cc.ch in s.idx)) return null;
+  if (s !== cur()){ applyComp(s); computeMasks(s); }
+  const base = cc.singId != null && gateById(cc.singId) ? cc.singId : cc.parent;
+  const m = popMask(s, base), X = s.cols[s.idx[cc.ch]], V = [];
+  for (let i = 0; i < s.n; i++) if (m[i]) V.push(X[i]);
+  return fitCellCycle(V);
+}
+function updateCellCycle(){
+  const cc = state.cc; if (!cc) return;
+  if (cc.singId != null && !gateById(cc.singId)) cc.singId = null;
+  if (cc.parent !== 'all' && !gateById(cc.parent)) cc.parent = 'all';
+  const s = cur();
+  cc.fit = cc.ch in s.idx ? ccFitFor(s) : {ok: false, why: `This sample has no ${cc.ch} channel.`};
+  cc.compare = state.samples.map(x => ({x, f: x === s ? cc.fit : ccFitFor(x)})).filter(r => r.f?.ok);
+  computeMasks(s);
+}
+const pc = (a, b) => b ? (100 * a / b).toFixed(1) + '%' : '—';
+function renderCellCycle(){
+  const out = $('#ccOut'), cc = state.cc, s = cur();
+  fillCcParent();
+  if (!cc){ out.innerHTML = ''; return; }
+  const f = cc.fit;
+  if (!f?.ok){ out.innerHTML = `<div class="ccmsg"><strong>${esc(s.name)}:</strong> ${esc(f?.why || 'No result.')}</div>` + compareTable(cc); return; }
+  const rows = [['Sub-G1 (apoptotic)', f.sub, '--cc-sub', false], ['G0/G1', f.G1, '--cc-g1', true], ['S', f.S, '--cc-s', true], ['G2/M', f.G2, '--cc-g2', true], ['>4N (polyploid)', f.poly, '--cc-sub', false], ['Debris (< 10% of G0/G1 DNA)', f.debris, '--line', false]];
+  const cyc = f.G1 + f.S + f.G2;
+  const ratioOk = f.ratio >= 1.9 && f.ratio <= 2.05, cvOk = f.cv1 <= 0.06;
+  out.innerHTML = `<div class="ccgrid">
+    <div><h3>Phases in ${esc(s.name)}</h3><div class="tablewrap"><table><thead><tr><th>Phase</th><th>% singlets</th><th>% cycling</th><th>Events</th></tr></thead><tbody>` +
+      rows.map(([n, v, col, cycling]) => `<tr><td><span class="chip" style="background:var(${col})"></span>${n}</td><td>${pc(v, f.total)}</td><td>${cycling ? pc(v, cyc) : '—'}</td><td>${nf.format(Math.round(v))}</td></tr>`).join('') +
+    `</tbody></table></div></div>
+    <div><h3>Quality checks</h3><ul class="qc">
+      <li><span>Single cells analysed</span><span>${nf.format(f.total)}${cc.singId != null ? '' : ' (no doublet check)'}</span></li>
+      <li><span>G0/G1 peak</span><span>${fmtSI(f.mu1)}</span></li>
+      <li><span>G2/M peak</span><span>${fmtSI(f.mu2)}</span></li>
+      <li><span>G2/M ÷ G0/G1 (expect 1.9–2.05)</span><span class="${ratioOk ? 'good' : 'warn'}">${f.ratio.toFixed(2)}</span></li>
+      <li><span>CV of G0/G1 peak (good below 6%)</span><span class="${cvOk ? 'good' : 'warn'}">${(100 * f.cv1).toFixed(1)}%</span></li>
+      <li><span>CV of G2/M peak</span><span>${(100 * f.cv2).toFixed(1)}%</span></li>
+    </ul></div></div>` + compareTable(cc) +
+    `<p class="note">The model splits events where the phases overlap, so its percentages differ a little from the counts in the phase gates (shown in Populations). Gates are a starting point: drag their handles to adjust them, or press Run auto-gating again to refit.</p>`;
+}
+function compareTable(cc){
+  const rows = cc.compare || []; if (!rows.length) return '';
+  return `<h3>All samples with a cell-cycle profile</h3><div class="tablewrap"><table id="ccCompare"><thead><tr><th>Sample</th><th>Sub-G1</th><th>G0/G1</th><th>S</th><th>G2/M</th><th>&gt;4N</th><th>G2/G1</th><th>CV G0/G1</th></tr></thead><tbody>` +
+    rows.map(({x, f}) => `<tr class="${x === cur() ? 'cur' : ''}"><td>${esc(x.name)}</td><td>${pc(f.sub, f.total)}</td><td>${pc(f.G1, f.total)}</td><td>${pc(f.S, f.total)}</td><td>${pc(f.G2, f.total)}</td><td>${pc(f.poly, f.total)}</td><td>${f.ratio.toFixed(2)}</td><td>${(100 * f.cv1).toFixed(1)}%</td></tr>`).join('') +
+    `</tbody></table></div><p class="note">Percentages are of single cells.</p>`;
+}
+$('#ccCopy').addEventListener('click', () => {
+  const cc = state.cc; if (!cc?.compare?.length){ showMsg('Run cell-cycle auto-gating first.', false); return; }
+  const head = ['Sample', 'Single cells', 'Sub-G1 %', 'G0/G1 %', 'S %', 'G2/M %', '>4N %', 'G0/G1 peak', 'G2/M peak', 'G2/G1', 'CV G0/G1 %'];
+  const txt = [head.join('\t')].concat(cc.compare.map(({x, f}) => [x.name, f.total, ...[f.sub, f.G1, f.S, f.G2, f.poly].map(v => (100 * v / f.total).toFixed(2)), Math.round(f.mu1), Math.round(f.mu2), f.ratio.toFixed(3), (100 * f.cv1).toFixed(2)].join('\t'))).join('\n');
+  const btn = $('#ccCopy');
+  try { navigator.clipboard.writeText(txt).then(() => { btn.textContent = 'Copied'; setTimeout(() => btn.textContent = 'Copy results', 1600); }, () => { $('#copyFallback').hidden = false; $('#copyText').value = txt; $('#copyText').select(); }); }
+  catch(e){ $('#copyFallback').hidden = false; $('#copyText').value = txt; $('#copyText').select(); }
+});
+
+/* ---------------- Plot management ---------------- */
+const MAX_PLOTS = 8;
+const PLOT_DEFAULTS = [
+  {x: ['FSC-A', 'FSC-H'], y: ['SSC-A', 'SSC-H'], fx: 0, fy: 1},
+  {x: ['FL1-A', 'FL1-H'], y: ['FL2-A', 'FL2-H'], fx: 2, fy: 3},
+  {x: ['FL3-A', 'FL3-H'], y: ['FL4-A', 'FL4-H'], fx: 4, fy: 5},
+  {x: ['FSC-A'], y: ['FSC-H'], fx: 0, fy: 6},
+];
+function nextKey(){
+  const used = new Set(panels.map(p => p.key));
+  for (let i = 0; i < 26; i++){ const k = String.fromCharCode(65 + i); if (!used.has(k)) return k; }
+  return 'P' + (panels.length + 1);
+}
+function addPanel(opts = {}){
+  if (panels.length >= MAX_PLOTS) return null;
+  const key = opts.key && !panels.some(p => p.key === opts.key) ? opts.key : nextKey(), el = document.createElement('section');
+  el.className = 'panel'; el.id = 'panel' + key; el.setAttribute('aria-label', 'Plot ' + key);
+  // keep plots in alphabetical order on the page
+  const after = [...panels].filter(p => p.key < key).sort((a, b) => a.key < b.key ? 1 : -1)[0];
+  if (after) after.el.after(el); else $('#plots').prepend(el);
+  const ki = key.length === 1 ? key.charCodeAt(0) - 65 : panels.length;
+  const p = new Panel(el, key, opts.defs || PLOT_DEFAULTS[Math.min(ki, PLOT_DEFAULTS.length - 1)]);
+  const at = after ? panels.indexOf(after) + 1 : 0;
+  panels.splice(at, 0, p);
+  p.pop = opts.pop ?? (state.sel != null && gateById(state.sel) ? state.sel : 'all');
+  if (cur()){ p.fillChannels(); p.fillPops(); p.resize(); }
+  syncPlotButtons();
+  markChange();
+  return p;
+}
+function removePanel(p, force){
+  if (panels.length <= 1 && !force) return;
+  p.ro.disconnect(); p.el.remove();
+  panels.splice(panels.indexOf(p), 1);
+  if (menuCtx?.panel === p) closeAxisMenu();
+  syncPlotButtons();
+  markChange();
+}
+function syncPlotButtons(){
+  panels.forEach(p => { p.removeBtn.hidden = panels.length <= 1; });
+  $('#addPlot').disabled = panels.length >= MAX_PLOTS;
+  $('#plotHint').textContent = panels.length >= MAX_PLOTS ? `Up to ${MAX_PLOTS} plots.` : 'New plots show the selected gate\'s population.';
+}
+$('#addPlot').addEventListener('click', () => { const p = addPanel(); p?.el.scrollIntoView({behavior: 'smooth', block: 'nearest'}); });
+
+/* ---------------- Start ---------------- */
+panels = [];
+addPanel({pop: 'all'}); addPanel({pop: 'all'});
+(function init(){
+  state.samples = makeExamples();
+  const P = (x, y) => [10 ** x, 10 ** y];
+  state.gates = [
+    {id: 1, name: 'Lymphocytes', parent: null, type: 'poly', xch: 'FSC-A', ych: 'SSC-A', xs: 'log', ys: 'log', example: true,
+      pts: [P(5.86, 5.08), P(6.26, 5.12), P(6.30, 5.72), P(6.02, 5.82), P(5.84, 5.6)]},
+    {id: 2, name: 'FL1+', parent: 1, type: 'poly', shape: 'rect', xch: 'FL1-A', ych: 'FL2-A', xs: 'log', ys: 'log', example: true,
+      pts: [P(4.3, 2.0), P(5.9, 2.0), P(5.9, 4.6), P(4.3, 4.6)]},
+    {id: 3, name: 'FL2+', parent: 1, type: 'poly', shape: 'rect', xch: 'FL1-A', ych: 'FL2-A', xs: 'log', ys: 'log', example: true,
+      pts: [P(2.4, 4.25), P(4.05, 4.25), P(4.05, 5.7), P(2.4, 5.7)]},
+  ];
+  state.nextId = 4;
+  panels[1].pop = 1;
+  state.comp.chs = candidates(state.samples[0]);
+  state.comp.pop = 1;
+  state.cur = 0;
+  autoAssign();
+  setCurrent(0);
+  resetHistory();
+})();
+</script>
+</body>
+</html>

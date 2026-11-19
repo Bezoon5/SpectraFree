@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="SpectraFree">
+  <title>SpectraFree</title>
+  <rect x="0" y="0" width="120" height="120" rx="28" fill="#4b2479"/>
+  <path d="M10 92 C26 92 27 42 38 42 C49 42 50 92 66 92 Z" fill="#8b6cff" opacity="0.92"/>
+  <path d="M54 92 C70 92 71 50 82 50 C93 50 94 92 110 92 Z" fill="#ffb020" opacity="0.92"/>
+  <path d="M32 92 C48 92 49 26 60 26 C71 26 72 92 88 92 Z" fill="#3fd08a" opacity="0.92"/>
+  <line x1="12" y1="93" x2="108" y2="93" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/>
+</svg>
