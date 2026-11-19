@@ -13,6 +13,12 @@ Gating, compensation and cell-cycle analysis in a single HTML file. Your data ne
   <img alt="Status: training and research use" src="https://img.shields.io/badge/status-training%20%26%20research-d99a12">
 </p>
 
+<p align="center">
+  <a href="https://bezoon5.github.io/SpectraFree/"><img alt="Open SpectraFree in your browser" src="https://img.shields.io/badge/%E2%96%B6%20Open%20in%20your%20browser-6b33c4?style=for-the-badge"></a>
+  &nbsp;
+  <a href="https://bezoon5.github.io/SpectraFree/download.html"><img alt="Download SpectraFree" src="https://img.shields.io/badge/%E2%AC%87%20Download%20spectrafree.html-1f9d6a?style=for-the-badge"></a>
+</p>
+
 ![SpectraFree showing an FSC/SSC dot plot with a lymphocyte gate and an FL1/FL2 plot with two gates](docs/screenshots/overview.png)
 
 ## Why SpectraFree
@@ -22,6 +28,9 @@ SpectaFree is an open source flow cytometry software. Open it, drop in FCS files
 SpectraFree was "vibe coded": it was designed and written in conversation with an AI assistant (Claude, by Anthropic), then tested with automated checks against synthetic data with known answers. Read [Validation](#validation) and [Limitations](#limitations) before you rely on it.
 
 ## Try it
+
+- **[Open in your browser](https://bezoon5.github.io/SpectraFree/)**: runs straight away, nothing to install.
+- **[Download spectrafree.html](https://bezoon5.github.io/SpectraFree/download.html)**: save the single file, then double-click it to use SpectraFree offline. You can also [download the whole project as a ZIP](https://github.com/Bezoon5/SpectraFree/archive/refs/heads/main.zip).
 
 Online or offline with your own data. Export FCS files from your cytometer software (FCS 2.0, 3.0 or 3.1), then click **Open FCS files** or drag them onto the page. Files are read inside the browser. Nothing is uploaded anywhere.
 

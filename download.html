@@ -1,0 +1,66 @@
+<!doctype html>
+<!--
+  SpectraFree download page. Copyright (C) 2026 Bezoon5. Licensed under the GNU GPL v3.0 or later.
+  Served by GitHub Pages next to index.html, so the download link below saves the app as a file.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Download SpectraFree</title>
+<meta name="description" content="Download SpectraFree, open-source flow cytometry analysis in a single HTML file.">
+<link rel="icon" type="image/svg+xml" href="docs/logo-mark.svg">
+<style>
+  :root{--bg:#4b2479;--on-bg:#ffffff;--on-bg-muted:#d9c8ee;--surface:#ffffff;--ink:#1d1428;--muted:#62577a;--accent:#6b33c4;--line:#e0d8ea;color-scheme:light}
+  @media (prefers-color-scheme: dark){:root{--bg:#24113b;--on-bg:#f3ecfc;--on-bg-muted:#b9a5d4;--surface:#1a1326;--ink:#ebe5f4;--muted:#a093b5;--accent:#b48cff;--line:#33284a;color-scheme:dark}}
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{min-height:100vh;background:var(--bg);color:var(--on-bg);font:16px/1.5 "Segoe UI",system-ui,-apple-system,sans-serif;display:grid;place-items:center;padding:32px 16px}
+  main{max-width:560px;width:100%;display:flex;flex-direction:column;gap:20px}
+  .brand{display:flex;align-items:center;gap:14px}
+  .brand h1{margin:0;font-size:34px;letter-spacing:-.03em;font-weight:650}
+  .brand h1 span{color:#6ee7b0}
+  .card{background:var(--surface);color:var(--ink);border-radius:14px;padding:24px;display:flex;flex-direction:column;gap:14px}
+  .card h2{margin:0;font-size:20px}
+  .card p{margin:0;color:var(--muted)}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 18px;border-radius:8px;font-weight:600;text-decoration:none;border:1px solid var(--line);color:var(--ink);background:var(--surface)}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+  .row{display:flex;gap:10px;flex-wrap:wrap}
+  ol{margin:0;padding-left:20px;color:var(--muted)}
+  .foot{color:var(--on-bg-muted);font-size:14px;margin:0}
+  .foot a{color:var(--on-bg)}
+</style>
+</head>
+<body>
+<main>
+  <div class="brand">
+    <svg width="60" height="45" viewBox="8 20 104 78" aria-hidden="true">
+      <path d="M10 92 C26 92 27 42 38 42 C49 42 50 92 66 92 Z" fill="#a48bff" opacity="0.95"/>
+      <path d="M54 92 C70 92 71 50 82 50 C93 50 94 92 110 92 Z" fill="#ffc53d" opacity="0.95"/>
+      <path d="M32 92 C48 92 49 26 60 26 C71 26 72 92 88 92 Z" fill="#45d29a" opacity="0.95"/>
+      <line x1="12" y1="93" x2="108" y2="93" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+    </svg>
+    <h1>spectra<span>free</span></h1>
+  </div>
+  <div class="card">
+    <h2>Download SpectraFree</h2>
+    <p id="status">Your download should start in a moment. If it doesn't, use the button below.</p>
+    <div class="row">
+      <a class="btn primary" id="dl" href="index.html" download="spectrafree.html">Download spectrafree.html</a>
+      <a class="btn" href="./">Open in your browser instead</a>
+    </div>
+    <ol>
+      <li>Save <strong>spectrafree.html</strong> anywhere on your computer.</li>
+      <li>Double-click it. It opens in Chrome, Edge, Firefox or Safari, with no installation.</li>
+      <li>Click <strong>Open FCS files</strong>. Your files are read on your computer and never uploaded.</li>
+    </ol>
+  </div>
+  <p class="foot">Free and open source under the GNU GPL v3. <a href="https://github.com/Bezoon5/SpectraFree">Source code on GitHub</a>.</p>
+</main>
+<script>
+  // start the download once; the button stays for browsers that block automatic downloads
+  try { if (!sessionStorage.getItem('sf-dl')) { sessionStorage.setItem('sf-dl', '1'); document.getElementById('dl').click(); } } catch (e) {}
+</script>
+</body>
+</html>
