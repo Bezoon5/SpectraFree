@@ -144,7 +144,6 @@ The automated checks in [`tests/smoke.mjs`](tests/smoke.mjs) run the app in a he
 - Data types I (8, 16 and 32-bit integers), F (32-bit float) and D (64-bit float), little- or big-endian
 - `$PnE` log amplification, `$PnG` gain, `$PnR` range masking
 - `$SPILLOVER`, `$SPILL` and `SPILL` matrices
-- Designed around BD Accuri C6 / C6 Plus channel names (FSC-A, SSC-A, FL1-A to FL4-A, FL2-H…), and works with any cytometer's channel names
 
 ## Limitations
 
